@@ -236,7 +236,7 @@ async function main() {
         status: "active",
         isFeatured: true,
         hasVariants: true,
-        seoTitle: "Classic Crew T-Shirt | My Store",
+        seoTitle: "Classic Crew T-Shirt",
         seoDescription: "Shop the Classic Crew T-Shirt in multiple sizes and colors.",
       },
     ])
@@ -259,7 +259,7 @@ async function main() {
         status: "active",
         isFeatured: true,
         hasVariants: false,
-        seoTitle: "Wireless Earbuds Pro | My Store",
+        seoTitle: "Wireless Earbuds Pro",
         seoDescription: "Buy Wireless Earbuds Pro with active noise cancellation.",
       },
     ])
@@ -328,15 +328,19 @@ async function main() {
   await db.insert(productImages).values([
     {
       productId: classicTee.id,
-      url: "https://placehold.co/800x800?text=Classic+Crew+Tee",
+      url: "https://placehold.co/800x800.png?text=Classic+Crew+Tee",
       sortOrder: 0,
     },
     {
       productId: earbuds.id,
-      url: "https://placehold.co/800x800?text=Wireless+Earbuds+Pro",
+      url: "https://placehold.co/800x800.png?text=Wireless+Earbuds+Pro",
       sortOrder: 0,
     },
-    { productId: bottle.id, url: "https://placehold.co/800x800?text=Water+Bottle", sortOrder: 0 },
+    {
+      productId: bottle.id,
+      url: "https://placehold.co/800x800.png?text=Water+Bottle",
+      sortOrder: 0,
+    },
   ]);
 
   console.log("Seeding inventory...");

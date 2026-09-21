@@ -4,8 +4,9 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 2 — Authentication. Supabase Auth (registration, login, logout, password
-reset, roles/admin authorization) is wired up; no commerce UI/business logic yet.
+**Status:** Phase 3 — Product Catalog. Categories, products, variants, and a storefront
+(listing, search/filter/sort/pagination, product detail pages) are live. No cart/checkout
+yet.
 
 ## Tech stack
 
@@ -74,6 +75,22 @@ account:
 ```bash
 pnpm admin:promote user@example.com
 ```
+
+## Product catalog
+
+- `/products` — full catalog, with search (`q`), price range (`minPrice`/`maxPrice`), sort
+  (`sort`), and pagination (`page`) — all URL-driven query params, no client JS required.
+- `/products/[slug]` — product detail page; products with variants (e.g. Size/Color) get an
+  interactive variant selector that updates price/SKU/stock without a page reload.
+- `/categories` and `/categories/[slug]` — category browsing, reusing the same
+  search/filter/sort/pagination as `/products`, scoped to that category.
+
+Search is a simple `ILIKE` match on name/short description — fine for the current catalog
+size. If the catalog grows enough for this to matter, swap it for Postgres full-text search
+(a generated `tsvector` column + GIN index) rather than optimizing prematurely now.
+
+Product/category domain logic lives in `src/modules/products/` and
+`src/modules/categories/`, not in the page components.
 
 ## Testing
 
