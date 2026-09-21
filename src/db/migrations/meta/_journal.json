@@ -8,6 +8,13 @@
       "when": 1789970259156,
       "tag": "0000_freezing_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789971940607,
+      "tag": "0001_auth_user_profile_trigger",
+      "breakpoints": true
     }
   ]
 }

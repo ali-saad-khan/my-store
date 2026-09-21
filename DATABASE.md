@@ -15,6 +15,16 @@ Two connection strings are required (see `.env.example`):
 
 Both are in Supabase dashboard → Settings → Database.
 
+**Gotcha:** if the DB password contains a literal `$`, escape it as `\$` in `.env.local`.
+Next.js's built-in env loader expands unescaped `$VARIABLE` references (a documented
+feature, for referencing one env var from another) — an unescaped `$` in a password gets
+silently treated as the start of a variable reference and stripped, corrupting the
+connection string. All of this project's own scripts (`drizzle.config.ts`,
+`src/db/seed/index.ts`, `src/db/scripts/*.ts`) load env via `@next/env`'s `loadEnvConfig`
+specifically so they apply the exact same expansion rules as `next dev`/`next build` — don't
+swap that for a plain `dotenv` import, or a `$` in a secret will behave differently in
+scripts vs. the running app.
+
 ## Commands
 
 ```bash
@@ -31,13 +41,32 @@ pnpm db:seed       # reset and re-insert development seed data
 Supabase owns that schema and table. `profiles.id` is the same UUID as the corresponding
 `auth.users.id`; the foreign key constraint linking them is added by hand at the bottom of
 `src/db/migrations/0000_freezing_magma.sql` (not represented in the TS schema), so
-`drizzle-kit generate` never tries to manage Supabase's own schema. The trigger that creates
-a `profiles` row when a new `auth.users` row is created is wired up in Phase 2
-(Authentication), not here.
+`drizzle-kit generate` never tries to manage Supabase's own schema. Phase 2 added the actual
+trigger, as a hand-written custom migration
+(`src/db/migrations/0001_auth_user_profile_trigger.sql`, `SECURITY DEFINER` since it fires
+on a table this app's DB role doesn't own): `handle_new_user()` inserts the matching
+`profiles` row and assigns the default `customer` role the instant someone signs up, and
+`handle_user_email_updated()` keeps `profiles.email` in sync if the user changes their email
+in Supabase Auth. Application code never creates `profiles` rows directly.
 
 **Roles are a table, not an enum.** `roles` + `user_roles` (rather than a Postgres enum on
 `profiles`) so new roles (`manager`, `inventory_manager`, `support`, `marketing`, ...) need a
 data insert, not a schema migration — see MasterPlan.txt section 2.
+
+**Authorization is enforced in the application layer, not via Postgres Row Level Security.**
+`DATABASE_URL` connects with full table access (that's how Drizzle queries work), so RLS
+policies on `public.*` tables would not be enforced against it anyway. Every protected page
+and Server Action calls `requireUser`/`requireRole`/`requireAdmin`
+(`src/modules/auth/session.ts`), which verifies the session against the Supabase Auth server
+and checks `user_roles` before touching data — see MasterPlan.txt section 17 ("Never rely
+solely on hiding UI elements").
+
+**Seeding `roles` is an upsert, not a reset.** Unlike every other Phase 1 reference table,
+`src/db/seed/index.ts` never deletes `roles` — deleting it would cascade-delete every real
+`user_roles` grant (customers' and admins' role assignments), since `roles.id` is
+regenerated on insert. `pnpm db:seed` is safe to re-run after Phase 2 for this reason; the
+same caution will need to extend to other reference tables once later phases give them real
+dependents (e.g. `payment_methods` once Phase 6 orders reference it).
 
 **Fixed-vocabulary statuses are enums.** `order_status`, `payment_status`,
 `shipment_status`, `product_status`, `inventory_movement_type`, `discount_type`,

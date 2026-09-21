@@ -4,10 +4,11 @@
  * Only seeds reference/config and catalog data that has no dependency on a real
  * Supabase Auth user (profiles/addresses/carts/orders/reviews/wishlists need a
  * real `auth.users` row, which doesn't exist until Phase 2 wires up authentication).
- * Safe to re-run: it deletes the rows it owns before re-inserting them.
+ * Safe to re-run: it deletes the rows it owns before re-inserting them, except
+ * `roles`, which is upserted so it never disturbs real user_roles grants.
  */
-import { config } from "dotenv";
-config({ path: ".env.local" });
+import { loadEnvConfig } from "@next/env";
+loadEnvConfig(process.cwd());
 
 async function main() {
   const { db } = await import("../client");
@@ -51,7 +52,10 @@ async function main() {
   await db.delete(shippingZones);
   await db.delete(coupons);
   await db.delete(paymentMethods);
-  await db.delete(roles);
+  // roles is intentionally NOT reset here: once Phase 2 auth is live, real
+  // user_roles rows reference it, and roles.id is regenerated on every insert
+  // (see the idempotent upsert below), so deleting it would cascade-delete
+  // every customer's/admin's role grants.
   await db.delete(taxRates);
   await db.delete(cities);
   await db.delete(states);
@@ -111,15 +115,18 @@ async function main() {
       { countryId: pakistan.id, name: "No Sales Tax (default)", rate: "0.0000", isActive: true },
     ]);
 
-  console.log("Seeding roles...");
-  await db.insert(roles).values([
-    { name: "customer", description: "A registered shopper." },
-    { name: "admin", description: "Full administrative access." },
-    { name: "manager", description: "Store operations manager." },
-    { name: "inventory_manager", description: "Manages stock and inventory movements." },
-    { name: "support", description: "Customer support access." },
-    { name: "marketing", description: "Manages coupons, content, and campaigns." },
-  ]);
+  console.log("Seeding roles (idempotent — never touches existing role grants)...");
+  await db
+    .insert(roles)
+    .values([
+      { name: "customer", description: "A registered shopper." },
+      { name: "admin", description: "Full administrative access." },
+      { name: "manager", description: "Store operations manager." },
+      { name: "inventory_manager", description: "Manages stock and inventory movements." },
+      { name: "support", description: "Customer support access." },
+      { name: "marketing", description: "Manages coupons, content, and campaigns." },
+    ])
+    .onConflictDoNothing({ target: roles.name });
 
   console.log("Seeding payment methods...");
   await db.insert(paymentMethods).values([
