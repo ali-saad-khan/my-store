@@ -1,0 +1,3 @@
+# wishlist module
+
+Customer wishlists.

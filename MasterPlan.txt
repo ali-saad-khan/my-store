@@ -1,0 +1,1475 @@
+# Production Ecommerce Platform — Master Development Prompt
+
+You are the lead software architect and senior full-stack engineer responsible for building a production-ready ecommerce platform.
+
+## 1. PROJECT OBJECTIVE
+
+Build a completely functional, production-quality ecommerce platform from scratch.
+
+The initial target market is Pakistan/local commerce.
+
+The architecture MUST be designed from day one so the same application can later support international markets without requiring a complete rewrite.
+
+This is NOT a prototype, mockup, tutorial project, or static frontend.
+
+Build a real application with:
+
+* Product management
+* Product variants
+* Categories
+* Inventory
+* Customers
+* Authentication
+* Shopping cart
+* Checkout
+* Orders
+* Payments
+* Cash on Delivery
+* Coupons/discounts
+* Shipping
+* Addresses
+* Reviews
+* Wishlist
+* Admin dashboard
+* Order management
+* Inventory management
+* Customer management
+* SEO
+* Analytics
+* Email notifications
+* Error handling
+* Security
+* Validation
+* Responsive UI
+* Performance optimization
+
+The application must be deployable to Vercel.
+
+---
+
+# 2. TECHNOLOGY STACK
+
+Use the following stack unless there is a strong technical reason to change something.
+
+## Core
+
+* Next.js
+* App Router
+* TypeScript
+* React
+* Tailwind CSS
+* shadcn/ui
+
+## Backend/application
+
+Use Next.js as the application/backend layer.
+
+Use:
+
+* Server Components by default
+* Server Actions where appropriate
+* Route Handlers for APIs/webhooks
+* Zod for validation
+
+Do NOT create a separate Express/NestJS backend unless there is a clearly documented reason.
+
+## Database
+
+* PostgreSQL
+* Supabase
+* Drizzle ORM
+
+Use PostgreSQL as the primary source of truth.
+
+Do not use Supabase as a replacement for application/business logic.
+
+Keep business logic inside the application layer.
+
+## Authentication
+
+Use Supabase Auth.
+
+Support:
+
+* Email/password
+* Email verification
+* Password reset
+* Session management
+* Customer accounts
+* Admin authentication
+
+Design authorization around roles.
+
+At minimum:
+
+* customer
+* admin
+
+The architecture should allow future roles such as:
+
+* manager
+* inventory_manager
+* support
+* marketing
+
+## File storage
+
+Do not store product images inside the Git repository.
+
+Design the image layer so it can use:
+
+* Supabase Storage initially
+* Cloudinary later if required
+
+Create an abstraction around media storage so switching providers does not require rewriting product functionality.
+
+## Deployment
+
+Primary deployment target:
+
+* Vercel
+
+Database:
+
+* Supabase PostgreSQL
+
+DNS/security:
+
+* Cloudflare
+
+---
+
+# 3. ARCHITECTURAL PRINCIPLES
+
+Follow these principles throughout the project.
+
+## Modular monolith
+
+Do NOT create microservices.
+
+Build a modular monolith with clear domain boundaries.
+
+Suggested structure:
+
+```text
+src/
+├── app/
+├── components/
+├── modules/
+│   ├── auth/
+│   ├── products/
+│   ├── categories/
+│   ├── cart/
+│   ├── checkout/
+│   ├── orders/
+│   ├── payments/
+│   ├── inventory/
+│   ├── customers/
+│   ├── shipping/
+│   ├── coupons/
+│   ├── reviews/
+│   ├── wishlist/
+│   └── notifications/
+├── db/
+├── lib/
+├── hooks/
+├── types/
+├── config/
+└── validations/
+```
+
+Keep domain logic separated.
+
+Avoid putting business logic directly inside React components.
+
+---
+
+# 4. INTERNATIONALIZATION REQUIREMENT
+
+The application initially operates in Pakistan but MUST NOT hard-code Pakistan-specific assumptions throughout the codebase.
+
+Do not write business logic such as:
+
+```ts
+currency = "PKR"
+country = "Pakistan"
+shippingFee = 250
+```
+
+throughout the application.
+
+Instead create configuration/data models for:
+
+* countries
+* currencies
+* tax rules
+* shipping zones
+* shipping rates
+* payment methods
+* address formats
+* availability
+* locale
+* timezone
+
+Initial configuration:
+
+```text
+Country: Pakistan
+Currency: PKR
+Timezone: Asia/Karachi
+Locale: en-PK
+```
+
+Future examples:
+
+```text
+United States
+USD
+
+United Arab Emirates
+AED
+
+United Kingdom
+GBP
+```
+
+The architecture should support multiple currencies and countries later.
+
+---
+
+# 5. DATABASE DESIGN
+
+Design a normalized PostgreSQL database.
+
+At minimum consider the following entities:
+
+```text
+users
+profiles
+roles
+user_roles
+
+countries
+states
+cities
+addresses
+
+categories
+products
+product_variants
+product_images
+product_attributes
+product_attribute_values
+product_categories
+
+inventory
+inventory_movements
+
+carts
+cart_items
+
+orders
+order_items
+order_addresses
+order_status_history
+
+payments
+payment_transactions
+payment_webhooks
+
+shipping_zones
+shipping_rates
+shipments
+shipment_tracking
+
+coupons
+coupon_usages
+
+wishlists
+wishlist_items
+
+reviews
+
+notifications
+
+settings
+audit_logs
+```
+
+Use:
+
+* UUID primary keys where appropriate
+* timestamps
+* created_at
+* updated_at
+* soft deletion where appropriate
+* proper foreign keys
+* unique constraints
+* indexes
+* database-level constraints
+
+Do not over-normalize unnecessarily.
+
+Do not duplicate data unless there is a clear performance or historical-data reason.
+
+---
+
+# 6. PRODUCT SYSTEM
+
+Products must support:
+
+* Name
+* Slug
+* SKU
+* Description
+* Short description
+* Price
+* Compare-at price
+* Cost price
+* Status
+* Featured flag
+* Brand
+* Category
+* Images
+* SEO title
+* SEO description
+* SEO keywords where appropriate
+* Inventory
+* Variants
+* Attributes
+
+Variants must support examples such as:
+
+```text
+Size
+Color
+Material
+Storage
+Weight
+```
+
+Example:
+
+```text
+Nike T-Shirt
+
+Variants:
+
+Small / Black
+Medium / Black
+Large / Black
+Small / White
+Medium / White
+Large / White
+```
+
+Each variant should have:
+
+* SKU
+* price
+* inventory
+* weight
+* status
+* images if required
+
+Do not assume every product has variants.
+
+---
+
+# 7. INVENTORY
+
+Inventory must be reliable.
+
+Track inventory movements.
+
+Example:
+
+```text
+PURCHASE
+SALE
+RETURN
+ADJUSTMENT
+DAMAGE
+CANCELLATION
+```
+
+Do not simply decrement an inventory number without recording why.
+
+Prevent overselling where possible.
+
+Use database transactions for operations affecting:
+
+* inventory
+* orders
+* payments
+
+---
+
+# 8. CART
+
+Support:
+
+* Guest cart
+* Authenticated cart
+* Cart persistence
+* Quantity updates
+* Variant selection
+* Product availability validation
+* Price validation
+
+Never trust client-side prices.
+
+The server must re-check:
+
+* product exists
+* variant exists
+* price
+* availability
+* inventory
+* discounts
+
+before creating an order.
+
+---
+
+# 9. CHECKOUT
+
+Checkout should support:
+
+```text
+Customer information
+↓
+Address
+↓
+Shipping method
+↓
+Payment method
+↓
+Order review
+↓
+Order creation
+↓
+Payment processing
+↓
+Confirmation
+```
+
+Do not create a successful order solely because the frontend says payment succeeded.
+
+Payment confirmation must be verified server-side.
+
+---
+
+# 10. PAYMENT ARCHITECTURE
+
+Create a payment-provider abstraction.
+
+Example conceptual interface:
+
+```ts
+interface PaymentProvider {
+  createPayment(): Promise<PaymentResult>
+  verifyPayment(): Promise<VerificationResult>
+  refundPayment(): Promise<RefundResult>
+}
+```
+
+Initial payment methods:
+
+* Cash on Delivery
+* Placeholder local payment gateway abstraction
+
+Future providers:
+
+* Stripe
+* PayPal
+* Regional payment providers
+
+The order system must not depend directly on a specific payment provider.
+
+Implement webhooks securely.
+
+Webhook handling must be:
+
+* authenticated/verified
+* idempotent
+* logged
+* retry-safe
+
+Never trust payment status sent directly from the browser.
+
+---
+
+# 11. CASH ON DELIVERY
+
+COD must be a first-class payment method.
+
+Support:
+
+```text
+COD pending
+COD confirmed
+COD shipped
+COD delivered
+COD cancelled
+COD returned
+```
+
+Allow configurable COD availability based on:
+
+* country
+* city
+* shipping zone
+* order value
+* product
+* customer history
+
+Do not hard-code these rules.
+
+---
+
+# 12. ORDER SYSTEM
+
+Order statuses should be configurable but initially support:
+
+```text
+pending
+confirmed
+processing
+packed
+shipped
+out_for_delivery
+delivered
+cancelled
+returned
+refunded
+```
+
+Keep order status history.
+
+Every important order transition should create an audit/history record.
+
+Orders must preserve historical information.
+
+For example, if the product price changes tomorrow, an existing order must still show the price that existed when the customer purchased it.
+
+Therefore store order-item snapshots such as:
+
+* product name
+* SKU
+* variant
+* unit price
+* quantity
+* discount
+* tax
+* subtotal
+
+---
+
+# 13. SHIPPING
+
+Create a flexible shipping architecture.
+
+Support:
+
+```text
+Shipping Zone
+Shipping Method
+Shipping Rate
+Shipment
+Tracking
+```
+
+Initial example:
+
+```text
+Pakistan
+├── Karachi
+├── Lahore
+├── Islamabad
+└── Other Cities
+```
+
+Do NOT hard-code these cities in application logic.
+
+Shipping should eventually support:
+
+* flat rate
+* free shipping
+* weight-based shipping
+* order-value-based shipping
+* courier integrations
+
+---
+
+# 14. COUPONS
+
+Support:
+
+* percentage discount
+* fixed discount
+* minimum order value
+* maximum discount
+* expiry date
+* usage limits
+* per-customer limits
+* product-specific discounts
+* category-specific discounts
+* active/inactive status
+
+Validate coupons on the server.
+
+---
+
+# 15. CUSTOMER ACCOUNTS
+
+Customers should have:
+
+```text
+Profile
+Orders
+Addresses
+Wishlist
+Reviews
+Account settings
+```
+
+Allow customers to:
+
+* register
+* login
+* logout
+* reset password
+* manage addresses
+* view orders
+* view order details
+* track orders
+* manage profile
+
+---
+
+# 16. ADMIN PANEL
+
+Create a complete admin dashboard.
+
+Admin sections:
+
+```text
+Dashboard
+Products
+Categories
+Inventory
+Orders
+Customers
+Coupons
+Reviews
+Shipping
+Payments
+Settings
+Audit Logs
+```
+
+Dashboard should eventually show:
+
+```text
+Revenue
+Orders
+Customers
+Products sold
+Low-stock products
+Pending orders
+Recent orders
+```
+
+Admin functionality must use authorization checks on the server.
+
+Never rely solely on hiding UI elements.
+
+---
+
+# 17. SECURITY
+
+Treat security as a core requirement.
+
+Implement:
+
+* server-side authorization
+* input validation
+* Zod schemas
+* SQL injection protection through ORM/parameterized queries
+* CSRF protection where applicable
+* secure cookies
+* secure sessions
+* rate limiting where appropriate
+* webhook signature verification
+* admin authorization
+* secure password handling through Supabase Auth
+* environment variable protection
+* no secrets in client bundles
+* audit logs for sensitive admin operations
+
+Never expose:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+DATABASE_PASSWORD
+PAYMENT_SECRET
+WEBHOOK_SECRET
+```
+
+to the browser.
+
+---
+
+# 18. SEO
+
+SEO must be implemented from the beginning.
+
+Every product page should support:
+
+* SEO title
+* meta description
+* canonical URL
+* OpenGraph metadata
+* Twitter/X metadata
+* Product structured data
+* Breadcrumb structured data
+* availability
+* price
+* reviews where appropriate
+
+Generate:
+
+```text
+/sitemap.xml
+/robots.txt
+```
+
+Use clean URLs:
+
+```text
+/products/product-name
+/categories/category-name
+```
+
+Do not use database IDs in public URLs unless necessary.
+
+Use slugs.
+
+---
+
+# 19. PERFORMANCE
+
+Performance is a first-class requirement.
+
+Use:
+
+* Server Components by default
+* Client Components only where required
+* image optimization
+* lazy loading
+* caching
+* pagination
+* database indexes
+* efficient queries
+* minimal JavaScript
+* code splitting
+* streaming where useful
+
+Do not fetch entire product catalogs.
+
+Do not fetch unnecessary data.
+
+Avoid N+1 database queries.
+
+Use pagination for:
+
+* products
+* orders
+* customers
+* reviews
+* inventory
+* audit logs
+
+Product/category pages should be highly cacheable where possible.
+
+Cart, checkout, account and admin areas should remain appropriately dynamic.
+
+---
+
+# 20. ACCESSIBILITY
+
+Build accessible UI.
+
+Follow:
+
+* semantic HTML
+* keyboard navigation
+* proper labels
+* focus states
+* accessible forms
+* appropriate ARIA only when required
+* sufficient contrast
+* screen-reader-friendly interactions
+
+Do not treat accessibility as an afterthought.
+
+---
+
+# 21. UI/UX
+
+The store should feel like a modern premium ecommerce website.
+
+Requirements:
+
+* mobile-first
+* responsive
+* clean
+* fast
+* minimal
+* professional
+* clear product hierarchy
+* excellent product cards
+* intuitive navigation
+* fast checkout
+
+Do not use excessive animations.
+
+Do not sacrifice performance for visual effects.
+
+Create reusable UI components.
+
+---
+
+# 22. ADMIN UI
+
+The admin dashboard should prioritize productivity rather than visual decoration.
+
+Use:
+
+* tables
+* filters
+* search
+* pagination
+* bulk actions
+* confirmation dialogs
+* forms
+* status badges
+* charts where useful
+
+Admin users should be able to manage the store without touching the database.
+
+---
+
+# 23. EMAIL SYSTEM
+
+Create an email abstraction.
+
+Support future transactional emails:
+
+```text
+Welcome
+Email verification
+Password reset
+Order confirmation
+Payment confirmation
+Order shipped
+Order delivered
+Order cancelled
+Refund
+Low stock
+```
+
+Use a provider abstraction so Resend can be used initially and another provider can be added later.
+
+Do not send emails directly from UI components.
+
+---
+
+# 24. NOTIFICATIONS
+
+Create a notification system that can later support:
+
+```text
+Email
+SMS
+WhatsApp
+Push notifications
+```
+
+Initially implement email where practical.
+
+Keep notification logic separated from business logic.
+
+---
+
+# 25. ANALYTICS
+
+Design analytics events.
+
+Examples:
+
+```text
+product_viewed
+product_added_to_cart
+cart_viewed
+checkout_started
+payment_started
+order_created
+order_completed
+product_searched
+wishlist_added
+```
+
+Do not place analytics code throughout business logic unnecessarily.
+
+Create a clean analytics abstraction.
+
+---
+
+# 26. ERROR HANDLING
+
+Create consistent error handling.
+
+Use structured application errors.
+
+Never expose internal database errors to customers.
+
+Customer-facing error:
+
+```text
+Something went wrong. Please try again.
+```
+
+Server logs should contain useful diagnostic information.
+
+Create:
+
+* error boundaries
+* loading states
+* empty states
+* not-found pages
+* proper HTTP status codes
+
+---
+
+# 27. OBSERVABILITY
+
+Prepare the application for Sentry or another monitoring platform.
+
+Track:
+
+* exceptions
+* failed payments
+* failed webhooks
+* server errors
+* important business events
+
+Do not log:
+
+* passwords
+* access tokens
+* payment secrets
+* full card information
+* sensitive customer data unnecessarily
+
+---
+
+# 28. TESTING
+
+Testing is mandatory.
+
+Create:
+
+## Unit tests
+
+For:
+
+* pricing
+* discounts
+* coupon rules
+* inventory calculations
+* shipping calculations
+* tax calculations
+* order totals
+
+## Integration tests
+
+For:
+
+* authentication
+* product creation
+* cart
+* checkout
+* order creation
+* payment verification
+* inventory updates
+
+## End-to-end tests
+
+Critical flows:
+
+```text
+Browse product
+↓
+Add to cart
+↓
+Checkout
+↓
+COD order
+↓
+Admin sees order
+↓
+Admin changes status
+↓
+Customer sees updated status
+```
+
+Do not consider the feature complete until critical paths are tested.
+
+---
+
+# 29. DATABASE MIGRATIONS
+
+All database schema changes must be represented through migrations.
+
+Never require manual database editing for normal development.
+
+Use Drizzle migrations.
+
+The project should support:
+
+```text
+development
+staging
+production
+```
+
+with appropriate environment variables.
+
+---
+
+# 30. ENVIRONMENT MANAGEMENT
+
+Use:
+
+```text
+.env.local
+.env.example
+```
+
+Never commit `.env.local`.
+
+`.env.example` must contain variable names but no real secrets.
+
+Example:
+
+```env
+DATABASE_URL=
+DIRECT_URL=
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+SUPABASE_SERVICE_ROLE_KEY=
+
+NEXT_PUBLIC_APP_URL=
+
+RESEND_API_KEY=
+
+SENTRY_DSN=
+
+PAYMENT_SECRET=
+PAYMENT_WEBHOOK_SECRET=
+```
+
+Only include variables that are actually required by implemented features.
+
+---
+
+# 31. GIT
+
+Use clean Git practices.
+
+Commits should be meaningful:
+
+```text
+feat: add product catalog
+feat: implement cart
+feat: add checkout
+fix: prevent inventory overselling
+refactor: extract payment provider
+test: add checkout integration tests
+```
+
+Do not commit:
+
+```text
+.env
+.env.local
+node_modules
+.next
+large media files
+secrets
+```
+
+Create a proper `.gitignore`.
+
+---
+
+# 32. DOCUMENTATION
+
+Maintain:
+
+```text
+README.md
+ARCHITECTURE.md
+DATABASE.md
+DEPLOYMENT.md
+ENVIRONMENT.md
+API.md
+```
+
+Documentation should be updated as architecture changes.
+
+README must explain:
+
+* prerequisites
+* installation
+* environment variables
+* database setup
+* migrations
+* local development
+* testing
+* production deployment
+
+---
+
+# 33. DEVELOPMENT WORKFLOW
+
+DO NOT attempt to build the entire system in one uncontrolled generation.
+
+Build in phases.
+
+After every phase:
+
+1. Run the application.
+2. Run TypeScript checks.
+3. Run linting.
+4. Run tests.
+5. Fix errors.
+6. Review architecture.
+7. Commit changes.
+8. Update documentation.
+
+The application must remain runnable after each phase.
+
+---
+
+# 34. DEVELOPMENT PHASES
+
+## Phase 0 — Architecture
+
+Create:
+
+* project
+* dependencies
+* folder structure
+* configuration
+* linting
+* formatting
+* environment setup
+* basic README
+
+Do not build commerce functionality yet.
+
+---
+
+## Phase 1 — Database
+
+Create:
+
+* Drizzle setup
+* PostgreSQL connection
+* initial schema
+* migrations
+* seed system
+
+Create realistic seed data.
+
+---
+
+## Phase 2 — Authentication
+
+Implement:
+
+* Supabase Auth
+* registration
+* login
+* logout
+* password reset
+* email verification
+* customer profile
+* role system
+* admin authorization
+
+---
+
+## Phase 3 — Product Catalog
+
+Implement:
+
+* categories
+* products
+* variants
+* attributes
+* images
+* product pages
+* category pages
+* search
+* filtering
+* sorting
+
+---
+
+## Phase 4 — Inventory
+
+Implement:
+
+* inventory
+* inventory movements
+* stock adjustment
+* low-stock detection
+* transaction-safe inventory updates
+
+---
+
+## Phase 5 — Cart
+
+Implement:
+
+* guest cart
+* authenticated cart
+* cart persistence
+* quantity updates
+* variant selection
+* validation
+
+---
+
+## Phase 6 — Checkout
+
+Implement:
+
+* customer information
+* address
+* shipping
+* payment selection
+* order calculation
+* order creation
+
+Initially support COD.
+
+---
+
+## Phase 7 — Orders
+
+Implement:
+
+* order status
+* order history
+* order details
+* admin order management
+* customer order history
+* cancellation
+* returns/refunds architecture
+
+---
+
+## Phase 8 — Admin
+
+Implement complete admin dashboard.
+
+---
+
+## Phase 9 — Coupons
+
+Implement the coupon/discount engine.
+
+---
+
+## Phase 10 — Reviews/Wishlist
+
+Implement:
+
+* reviews
+* ratings
+* wishlist
+* moderation
+
+---
+
+## Phase 11 — SEO
+
+Implement complete SEO system.
+
+---
+
+## Phase 12 — Email
+
+Implement transactional emails.
+
+---
+
+## Phase 13 — Analytics
+
+Implement analytics events and dashboards where appropriate.
+
+---
+
+## Phase 14 — Testing
+
+Build comprehensive:
+
+* unit tests
+* integration tests
+* E2E tests
+
+---
+
+## Phase 15 — Production hardening
+
+Review:
+
+* security
+* performance
+* database indexes
+* caching
+* error handling
+* rate limits
+* authorization
+* validation
+* accessibility
+* SEO
+* deployment
+
+---
+
+# 35. IMPORTANT DEVELOPMENT RULES
+
+Never:
+
+* invent credentials
+* invent API keys
+* hard-code secrets
+* expose service-role keys
+* trust client-side prices
+* trust client-side payment status
+* skip server validation
+* directly modify production data
+* disable security to make something work
+* create fake successful payment responses
+* create fake shipping confirmations
+* claim an integration works without actually testing it
+
+If a third-party integration requires credentials that are unavailable:
+
+1. Build the provider interface.
+2. Implement the integration where possible.
+3. Use a clearly isolated development/mock provider only for local testing.
+4. Document exactly what credentials are required.
+5. Never pretend the production integration is complete.
+
+---
+
+# 36. CODE QUALITY
+
+Prefer:
+
+* small functions
+* explicit types
+* reusable components
+* domain modules
+* server-side business logic
+* clear naming
+* typed database queries
+* reusable validation schemas
+
+Avoid:
+
+* giant components
+* duplicated logic
+* unnecessary abstractions
+* premature microservices
+* unnecessary dependencies
+* global mutable state
+* business logic inside UI components
+
+---
+
+# 37. FINAL PRODUCTION REQUIREMENT
+
+Before declaring the project complete, verify:
+
+```text
+[ ] Application builds
+[ ] TypeScript passes
+[ ] Lint passes
+[ ] Tests pass
+[ ] Database migrations work
+[ ] Seed works
+[ ] Authentication works
+[ ] Authorization works
+[ ] Products work
+[ ] Variants work
+[ ] Inventory works
+[ ] Cart works
+[ ] Checkout works
+[ ] COD works
+[ ] Orders work
+[ ] Admin works
+[ ] Coupons work
+[ ] Reviews work
+[ ] Wishlist works
+[ ] SEO works
+[ ] Sitemap works
+[ ] Robots.txt works
+[ ] Email system works
+[ ] Error handling works
+[ ] Security reviewed
+[ ] Responsive UI verified
+[ ] Accessibility reviewed
+[ ] Performance reviewed
+[ ] Vercel deployment works
+[ ] Production environment variables documented
+[ ] README updated
+[ ] Architecture documentation updated
+```
+
+Do not declare success simply because the development server starts.
+
+A feature is complete only when it is implemented, validated, tested, and integrated with the rest of the application.
+
+---
+
+# 38. HOW YOU SHOULD WORK WITH ME
+
+Before making major architectural decisions, explain the decision briefly.
+
+For each phase:
+
+1. Explain what will be built.
+2. Implement it.
+3. Show the important files created/changed.
+4. Run validation/tests.
+5. Fix issues.
+6. Summarize what is complete.
+7. Identify the next phase.
+
+Do not ask me to manually perform tasks that you can safely perform yourself.
+
+If credentials or external account configuration are required, clearly tell me exactly what I need to provide.
+
+Do not move to the next phase if the current phase has unresolved build/runtime errors.
+
+The final goal is a genuinely deployable ecommerce platform, not a generated demo.
