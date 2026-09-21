@@ -4,13 +4,14 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 0 — Architecture. Project scaffolding only; no commerce functionality yet.
+**Status:** Phase 1 — Database. Schema, migrations, and seed data exist; no commerce
+UI/business logic yet.
 
 ## Tech stack
 
 - Next.js (App Router) + TypeScript + React
 - Tailwind CSS + shadcn/ui
-- PostgreSQL (Supabase) + Drizzle ORM — added in Phase 1
+- PostgreSQL (Supabase) + Drizzle ORM
 - Supabase Auth — added in Phase 2
 
 ## Prerequisites
@@ -44,7 +45,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Database & migrations
 
-Not yet implemented — see Phase 1 in `MasterPlan.txt`.
+See [`DATABASE.md`](./DATABASE.md) for schema design decisions and the full table list.
+
+```bash
+pnpm db:generate   # generate a migration from the schema
+pnpm db:migrate    # apply migrations
+pnpm db:seed       # reset and load development seed data
+pnpm db:studio     # browse the database in Drizzle Studio
+```
 
 ## Testing
 
@@ -61,6 +69,10 @@ Not yet implemented — see Phase 14 in `MasterPlan.txt`.
 | `pnpm typecheck`    | Run the TypeScript compiler       |
 | `pnpm format`       | Format the codebase with Prettier |
 | `pnpm format:check` | Check formatting without writing  |
+| `pnpm db:generate`  | Generate a Drizzle migration      |
+| `pnpm db:migrate`   | Apply migrations                  |
+| `pnpm db:seed`      | Reset and load seed data          |
+| `pnpm db:studio`    | Open Drizzle Studio               |
 
 ## Project structure
 
@@ -69,7 +81,7 @@ src/
 ├── app/           # Next.js App Router routes
 ├── components/    # Shared UI components (shadcn/ui lives in components/ui)
 ├── modules/       # Domain modules (auth, products, cart, orders, ...)
-├── db/            # Database client, schema, migrations (Phase 1)
+├── db/            # Database client, schema, migrations, seed
 ├── lib/           # Cross-cutting utilities
 ├── hooks/         # Shared React hooks
 ├── types/         # Shared TypeScript types
