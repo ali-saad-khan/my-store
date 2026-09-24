@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile, getUserRoles, requireUser } from "@/modules/auth/session";
 import { SignOutButton } from "@/modules/auth/components/sign-out-button";
 
@@ -27,6 +28,16 @@ export default async function AccountPage() {
             <span className="text-muted-foreground">Roles:</span> {userRoleNames.join(", ")}
           </p>
         </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Link href="/account/orders" className="underline">
+              Your orders
+            </Link>
+          </CardTitle>
+          <CardDescription>View order history and track order status.</CardDescription>
+        </CardHeader>
       </Card>
       <SignOutButton />
     </div>

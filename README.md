@@ -4,7 +4,7 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 6 — Checkout. Categories, products, variants, and a storefront (listing,
+**Status:** Phase 7 — Orders. Categories, products, variants, and a storefront (listing,
 search/filter/sort/pagination, product detail pages) are live. Stock is tracked per
 product/variant with an append-only movement ledger; admins can view stock levels, filter
 for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`. Guests
@@ -14,8 +14,12 @@ A guest's cart merges into their account automatically on sign-in. `/checkout` c
 contact info, a delivery address (saved or new, data-driven city/shipping-zone resolution),
 and a shipping method, then places a Cash-on-Delivery order atomically: live price/stock
 re-validation, inventory decrement, order/payment/address snapshots, and cart clearing all
-happen in one database transaction. Order confirmation lives at `/orders/[orderNumber]`.
-No online payment gateway, order history/cancellation, or admin order management yet.
+happen in one database transaction. Orders move through a full status lifecycle (pending →
+confirmed → processing → packed → shipped → out for delivery → delivered, plus
+cancel/return/refund) at `/admin/orders`, with inventory restocked and COD payment
+settled automatically on each transition; customers can view order history at
+`/account/orders` and self-cancel an unfulfilled order. No online payment gateway or
+full admin dashboard yet.
 
 ## Tech stack
 

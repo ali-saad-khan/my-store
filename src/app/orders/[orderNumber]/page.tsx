@@ -2,22 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/currency";
+import { CancelOrderButton } from "@/modules/orders/components/cancel-order-button";
 import { getOrderByNumberForViewer } from "@/modules/orders/queries";
+import { CUSTOMER_CANCELLABLE_STATUSES, ORDER_STATUS_LABELS } from "@/modules/orders/status";
 
 export const metadata: Metadata = { title: "Order confirmation" };
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending confirmation",
-  confirmed: "Confirmed",
-  processing: "Processing",
-  packed: "Packed",
-  shipped: "Shipped",
-  out_for_delivery: "Out for delivery",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-  returned: "Returned",
-  refunded: "Refunded",
-};
 
 export default async function OrderConfirmationPage(props: PageProps<"/orders/[orderNumber]">) {
   const { orderNumber } = await props.params;
@@ -25,15 +14,19 @@ export default async function OrderConfirmationPage(props: PageProps<"/orders/[o
   if (!order) notFound();
 
   const address = order.addresses.find((a) => a.type === "shipping") ?? order.addresses[0];
+  const isCancellable = CUSTOMER_CANCELLABLE_STATUSES.includes(order.status);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Thank you for your order</h1>
-        <p className="text-muted-foreground">
-          Order <span className="font-medium">{order.orderNumber}</span> ·{" "}
-          {STATUS_LABELS[order.status] ?? order.status}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Thank you for your order</h1>
+          <p className="text-muted-foreground">
+            Order <span className="font-medium">{order.orderNumber}</span> ·{" "}
+            {ORDER_STATUS_LABELS[order.status]}
+          </p>
+        </div>
+        {isCancellable && <CancelOrderButton orderNumber={order.orderNumber} />}
       </div>
 
       <Card>
@@ -107,6 +100,25 @@ export default async function OrderConfirmationPage(props: PageProps<"/orders/[o
             {order.paymentMethod.name} — {formatPrice(order.total)}
           </CardDescription>
         </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Order history</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {order.statusHistory.map((entry) => (
+            <div key={entry.id} className="flex justify-between">
+              <span>
+                {ORDER_STATUS_LABELS[entry.toStatus]}
+                {entry.note && <span className="text-muted-foreground"> — {entry.note}</span>}
+              </span>
+              <span className="text-muted-foreground shrink-0">
+                {new Date(entry.createdAt).toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </CardContent>
       </Card>
     </div>
   );

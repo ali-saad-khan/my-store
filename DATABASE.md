@@ -127,16 +127,30 @@ rejected — no partial orders, no phantom stock decrements.
 **A guest order's `order_number` doubles as a bearer link.** It has ~32 bits of randomness
 (`ORD-YYYYMMDD-XXXXXXXX`), so the confirmation page at `/orders/[orderNumber]` is viewable
 without authentication — the same pattern most guest checkouts use for a "thank you" page.
-A signed-in customer's order is still ownership-checked (`profileId` match, or admin).
-Proper "look up my order by number + email" tracking is Phase 7 (Orders) territory.
+A signed-in customer's order is still ownership-checked (`profileId` match, or admin). A
+guest can also self-cancel via that same bearer link (`src/modules/orders/status.ts`'s
+`CUSTOMER_CANCELLABLE_STATUSES` window); there's still no "look up my order by number +
+email" search for a guest who lost the link.
+
+**Order status is a state machine, not a free-form enum write.** `allowedNextStatuses`/
+`canTransition` in `src/modules/orders/status.ts` define the only legal transitions
+(pending → confirmed → processing → packed → shipped → out_for_delivery → delivered, with
+cancel/return/refund branches — MasterPlan.txt section 12); `transitionOrderStatus`
+(`src/modules/orders/mutations.ts`) rejects anything else. Side effects are attached to
+specific transitions, all in the same transaction as the status write: cancelling or
+returning an order restocks inventory via `adjustInventoryTx` (paired `cancellation`/
+`return` movements — the sale movement from checkout is never edited, only offset);
+delivering an order settles the COD payment from `pending` to `paid` with a `capture`
+`payment_transactions` row; refunding sets it to `refunded`. Every transition — whether
+admin- or customer-initiated — writes an `order_status_history` row.
 
 ## Scope note: what Phase 1 does NOT include
 
 - **COD/payment-method availability rules** (by country/city/zone/order value/product/
-  customer history — MasterPlan.txt section 11) are still not modeled as tables as of
-  Phase 6. COD is the only active `payment_methods` row and checkout offers it
-  unconditionally; per-zone/order-value/customer-history gating is real future work, not
-  yet needed with a single payment method and a single active market.
+  customer history — MasterPlan.txt section 11) are still not modeled as tables. COD is the
+  only active `payment_methods` row and checkout offers it unconditionally; per-zone/
+  order-value/customer-history gating is real future work, not yet needed with a single
+  payment method and a single active market.
 - **Per-country address form requirements** ("address formats" in section 4) are treated as
   UI/validation config, not database rows. The checkout address form is Pakistan-shaped
   (city select, no address line 3, no state free-text — state is derived from the chosen

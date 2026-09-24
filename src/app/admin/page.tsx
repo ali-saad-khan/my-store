@@ -33,6 +33,16 @@ export default async function AdminPage() {
           <CardDescription>Stock levels, low-stock alerts, and manual adjustments.</CardDescription>
         </CardHeader>
       </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Link href="/admin/orders" className="underline">
+              Orders
+            </Link>
+          </CardTitle>
+          <CardDescription>Search, review, and move orders through fulfillment.</CardDescription>
+        </CardHeader>
+      </Card>
     </div>
   );
 }
