@@ -144,6 +144,50 @@ delivering an order settles the COD payment from `pending` to `paid` with a `cap
 `payment_transactions` row; refunding sets it to `refunded`. Every transition — whether
 admin- or customer-initiated — writes an `order_status_history` row.
 
+**The admin product form can't change `hasVariants` after creation**, and that field is
+submitted via a hidden input rather than the (visually disabled) checkbox on the edit page —
+a disabled `<input>` is excluded from `FormData` entirely, so the checkbox's real value never
+reaches the server. `updateProductAdmin` additionally never trusts the submitted
+`hasVariants` at all; it re-reads the persisted value from `products` inside the transaction
+and branches on that. Both were deliberate after live-testing caught the disabled-checkbox
+case actually happening: an edit silently created a stray product-level `inventory` row
+alongside a variant product's real variant-level rows. **Lesson for future admin forms with
+a "locked after creation" field: either submit it via a hidden input, or (better, as done
+here) have the mutation re-derive the true value from the DB instead of trusting the client
+at all.**
+
+**Admin product-form arrays are zipped by index across parallel `FormData` fields**
+(`variantSku`, `variantPrice`, `variantAttr_<attributeId>`, ...), matching the pattern
+already used for filter checkboxes elsewhere. This breaks if any per-row field is only
+rendered for _some_ rows — live-testing caught exactly this: the "Initial stock" input only
+existed for new (unsaved) variant rows, so submitting a mix of existing + new variants made
+`variantInitialStock`'s array shorter than the others, shifting every value after the
+mismatch to the wrong row. Fixed by always rendering one `variantInitialStock` field per row
+(a hidden `value="0"` for existing rows, where it's ignored server-side anyway). **Any new
+per-row field in this form must render unconditionally for every row, even where its value
+is unused, or add an explicit per-row index instead of relying on array position.**
+
+## Scope note: what Phase 8 (Admin) deliberately left out
+
+MasterPlan.txt section 16 lists Coupons, Reviews, Shipping, Payments, Settings, and Audit
+Logs as admin sections alongside Dashboard/Products/Categories/Inventory/Orders/Customers.
+Per the user's explicit choice when this phase's scope was confirmed, only Dashboard +
+Products + Categories + Customers were built now (Inventory and Orders already existed from
+Phases 4 and 7):
+
+- **Coupons and Reviews admin UI** are skipped entirely — those features don't exist yet
+  (Phases 9 and 10), so an admin panel for them would have nothing real to manage.
+- **Shipping-zone/rate CRUD** has no admin UI — `shipping_zones`/`shipping_rates` are still
+  seed-data-only, same as Phase 6 left them.
+- **A dedicated `/admin/payments` page** doesn't exist — payment status/transactions are
+  visible per-order at `/admin/orders/[orderNumber]`, which covers what a first pass needs.
+- **Settings and Audit Logs** are unbuilt. The `settings` and `audit_logs` tables exist from
+  Phase 1 but nothing reads or writes them yet — no admin-initiated action (inventory
+  adjustment, order status change, product edit, category delete, ...) currently produces an
+  audit trail beyond each domain's own history table (`inventory_movements`,
+  `order_status_history`). MasterPlan.txt section 17 asks for "audit logs for sensitive
+  admin operations" — that's still open.
+
 ## Scope note: what Phase 1 does NOT include
 
 - **COD/payment-method availability rules** (by country/city/zone/order value/product/

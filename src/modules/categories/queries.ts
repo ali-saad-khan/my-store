@@ -1,7 +1,10 @@
 import "server-only";
 import { and, asc, eq, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client";
 import { categories } from "@/db/schema";
+
+const parentCategory = alias(categories, "parent_category");
 
 export async function getTopLevelCategories() {
   return db
@@ -37,4 +40,39 @@ export async function getCategoryBySlug(slug: string) {
     .orderBy(asc(categories.sortOrder), asc(categories.name));
 
   return { ...category, children };
+}
+
+export async function listCategoriesForAdmin() {
+  return db
+    .select({
+      id: categories.id,
+      name: categories.name,
+      slug: categories.slug,
+      isActive: categories.isActive,
+      sortOrder: categories.sortOrder,
+      parentName: parentCategory.name,
+    })
+    .from(categories)
+    .leftJoin(parentCategory, eq(parentCategory.id, categories.parentId))
+    .where(isNull(categories.deletedAt))
+    .orderBy(asc(categories.sortOrder), asc(categories.name));
+}
+
+export async function getCategoryByIdForAdmin(id: string) {
+  const [category] = await db
+    .select()
+    .from(categories)
+    .where(and(eq(categories.id, id), isNull(categories.deletedAt)))
+    .limit(1);
+  return category ?? null;
+}
+
+/** For the parent-category picker — excludes the category being edited (can't be its own parent). */
+export async function listCategoryOptions(excludeId?: string) {
+  const rows = await db
+    .select({ id: categories.id, name: categories.name })
+    .from(categories)
+    .where(isNull(categories.deletedAt))
+    .orderBy(asc(categories.name));
+  return excludeId ? rows.filter((row) => row.id !== excludeId) : rows;
 }

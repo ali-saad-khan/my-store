@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/currency";
-import { requireAdmin } from "@/modules/auth/session";
 import { UpdateOrderStatusForm } from "@/modules/orders/components/update-order-status-form";
 import { getOrderForAdmin } from "@/modules/orders/queries";
 import { allowedNextStatuses, ORDER_STATUS_LABELS } from "@/modules/orders/status";
@@ -12,7 +11,6 @@ export const metadata: Metadata = { title: "Order detail" };
 export default async function AdminOrderDetailPage(
   props: PageProps<"/admin/orders/[orderNumber]">,
 ) {
-  await requireAdmin();
   const { orderNumber } = await props.params;
   const order = await getOrderForAdmin(orderNumber);
   if (!order) notFound();

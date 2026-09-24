@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Pagination } from "@/components/pagination";
-import { requireAdmin } from "@/modules/auth/session";
 import { AdjustInventoryForm } from "@/modules/inventory/components/adjust-inventory-form";
 import { InventoryFilters } from "@/modules/inventory/components/inventory-filters";
 import { listInventory } from "@/modules/inventory/queries";
@@ -9,8 +8,6 @@ import { inventoryListSearchSchema } from "@/validations/inventory";
 export const metadata: Metadata = { title: "Inventory" };
 
 export default async function AdminInventoryPage(props: PageProps<"/admin/inventory">) {
-  await requireAdmin();
-
   const rawSearch = await props.searchParams;
   const search = inventoryListSearchSchema.parse(rawSearch);
   const result = await listInventory(search);

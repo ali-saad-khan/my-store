@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Pagination } from "@/components/pagination";
 import { formatPrice } from "@/lib/currency";
-import { requireAdmin } from "@/modules/auth/session";
 import { OrderFilters } from "@/modules/orders/components/order-filters";
 import { listOrdersForAdmin } from "@/modules/orders/queries";
 import { ORDER_STATUS_LABELS } from "@/modules/orders/status";
@@ -11,8 +10,6 @@ import { orderListSearchSchema } from "@/validations/orders";
 export const metadata: Metadata = { title: "Orders" };
 
 export default async function AdminOrdersPage(props: PageProps<"/admin/orders">) {
-  await requireAdmin();
-
   const rawSearch = await props.searchParams;
   const search = orderListSearchSchema.parse(rawSearch);
   const result = await listOrdersForAdmin(search);
