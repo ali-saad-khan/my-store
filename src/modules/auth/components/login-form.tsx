@@ -6,14 +6,14 @@ import { SubmitButton } from "@/components/submit-button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { signIn } from "@/modules/auth/actions";
-import { AuthMessage } from "./auth-message";
+import { FormMessage } from "@/components/form-message";
 
 export function LoginForm() {
   const [state, formAction] = useActionState(signIn, undefined);
 
   return (
     <form action={formAction} className="space-y-4">
-      <AuthMessage error={state?.error} success={state?.success} />
+      <FormMessage error={state?.error} success={state?.success} />
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />

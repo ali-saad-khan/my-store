@@ -4,9 +4,11 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 3 — Product Catalog. Categories, products, variants, and a storefront
-(listing, search/filter/sort/pagination, product detail pages) are live. No cart/checkout
-yet.
+**Status:** Phase 4 — Inventory. Categories, products, variants, and a storefront
+(listing, search/filter/sort/pagination, product detail pages) are live. Stock is tracked
+per product/variant with an append-only movement ledger; admins can view stock levels,
+filter for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`.
+No cart/checkout yet.
 
 ## Tech stack
 

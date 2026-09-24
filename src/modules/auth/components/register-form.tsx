@@ -5,14 +5,14 @@ import { SubmitButton } from "@/components/submit-button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { signUp } from "@/modules/auth/actions";
-import { AuthMessage } from "./auth-message";
+import { FormMessage } from "@/components/form-message";
 
 export function RegisterForm() {
   const [state, formAction] = useActionState(signUp, undefined);
 
   return (
     <form action={formAction} className="space-y-4">
-      <AuthMessage error={state?.error} success={state?.success} />
+      <FormMessage error={state?.error} success={state?.success} />
       <div className="space-y-2">
         <Label htmlFor="fullName">Full name</Label>
         <Input id="fullName" name="fullName" type="text" autoComplete="name" required />

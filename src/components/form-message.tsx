@@ -1,7 +1,8 @@
 import { AlertCircleIcon, CheckCircle2Icon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export function AuthMessage({ error, success }: { error?: string; success?: string }) {
+/** Generic error/success banner for Server Action `useActionState` results. */
+export function FormMessage({ error, success }: { error?: string; success?: string }) {
   if (!error && !success) return null;
 
   return (
