@@ -3,6 +3,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { carts, cartItems, productVariants, products } from "@/db/schema";
 import { getCurrentUser } from "@/modules/auth/session";
+import type { DbTransaction } from "@/modules/inventory/mutations";
 import { getCartSessionToken } from "./session";
 
 /** `{ profileId }` when signed in, `{ sessionToken }` for a guest with an existing cart cookie, or `null`. */
@@ -82,39 +83,66 @@ export async function findCartItemWithOwnership(cartItemId: string) {
 
 /**
  * Live price + sellable stock for a product or variant, re-checked on every
- * cart mutation — never trust a client-supplied price (MasterPlan.txt
- * section 8). Returns `null` when the item can't be sold at all (missing,
- * archived, soft-deleted, or a variant that doesn't belong to the product).
+ * cart mutation and at order creation — never trust a client-supplied price
+ * (MasterPlan.txt section 8). Returns `null` when the item can't be sold at
+ * all (missing, archived, soft-deleted, or a variant that doesn't belong to
+ * the product). Pass a transaction handle to read within a larger
+ * transaction (e.g. order creation locking inventory rows).
  */
-export async function getSellableItem(input: { productId: string; variantId?: string }) {
+export async function getSellableItem(
+  input: { productId: string; variantId?: string },
+  client: DbTransaction | typeof db = db,
+) {
   if (input.variantId) {
-    const variant = await db.query.productVariants.findFirst({
+    const variant = await client.query.productVariants.findFirst({
       where: and(
         eq(productVariants.id, input.variantId),
         eq(productVariants.productId, input.productId),
         isNull(productVariants.deletedAt),
       ),
-      with: { inventory: true },
+      with: {
+        inventory: true,
+        product: true,
+        attributeValues: { with: { attributeValue: true } },
+      },
     });
     if (!variant || variant.status !== "active") return null;
 
     return {
       price: variant.price,
       quantityAvailable: sumAvailable(variant.inventory),
+      inventoryId: variant.inventory[0]?.id ?? null,
+      productName: variant.product.name,
+      sku: variant.sku,
+      variantLabel: variant.attributeValues
+        .map(({ attributeValue }) => attributeValue.value)
+        .join(" / "),
+      weight: variant.weight,
     };
   }
 
-  const product = await db.query.products.findFirst({
+  const product = await client.query.products.findFirst({
     where: and(eq(products.id, input.productId), isNull(products.deletedAt)),
     with: { inventory: true },
   });
-  if (!product || product.status !== "active" || product.hasVariants || !product.price) {
+  if (
+    !product ||
+    product.status !== "active" ||
+    product.hasVariants ||
+    !product.price ||
+    !product.sku
+  ) {
     return null;
   }
 
   return {
     price: product.price,
     quantityAvailable: sumAvailable(product.inventory),
+    inventoryId: product.inventory[0]?.id ?? null,
+    productName: product.name,
+    sku: product.sku,
+    variantLabel: null,
+    weight: product.weight,
   };
 }
 

@@ -115,14 +115,32 @@ have a public-facing detail page: `profiles`, `categories`, `products`, `product
 `inventory_movements`, `order_status_history`, `payment_webhooks`, `audit_logs`) are
 append-only and never soft-deleted.
 
+**Order creation is one database transaction** (`src/modules/checkout/mutations.ts`,
+`placeOrder`): re-validating every cart line's live price/stock, decrementing inventory
+(`adjustInventoryTx` — the same transaction-safe, oversell-proof logic from Phase 4, now
+exposed as a composable function that takes a transaction handle instead of always opening
+its own), inserting the order/order_items/order_addresses/payment/payment_transaction/
+order_status_history rows, and clearing the cart all commit or fail together
+(MasterPlan.txt section 7). If any line is unavailable or under-stocked, the whole order is
+rejected — no partial orders, no phantom stock decrements.
+
+**A guest order's `order_number` doubles as a bearer link.** It has ~32 bits of randomness
+(`ORD-YYYYMMDD-XXXXXXXX`), so the confirmation page at `/orders/[orderNumber]` is viewable
+without authentication — the same pattern most guest checkouts use for a "thank you" page.
+A signed-in customer's order is still ownership-checked (`profileId` match, or admin).
+Proper "look up my order by number + email" tracking is Phase 7 (Orders) territory.
+
 ## Scope note: what Phase 1 does NOT include
 
 - **COD/payment-method availability rules** (by country/city/zone/order value/product/
-  customer history — MasterPlan.txt section 11) are not yet modeled as tables. They'll be
-  added alongside the actual COD business logic in Phase 6 (Checkout), once there's real
-  logic to attach them to.
+  customer history — MasterPlan.txt section 11) are still not modeled as tables as of
+  Phase 6. COD is the only active `payment_methods` row and checkout offers it
+  unconditionally; per-zone/order-value/customer-history gating is real future work, not
+  yet needed with a single payment method and a single active market.
 - **Per-country address form requirements** ("address formats" in section 4) are treated as
-  UI/validation config, not database rows — deferred to Phase 6.
+  UI/validation config, not database rows. The checkout address form is Pakistan-shaped
+  (city select, no address line 3, no state free-text — state is derived from the chosen
+  city); a second active country would need its own form shape, not just new `cities` rows.
 - Seed data only populates reference/config and catalog tables (currencies, countries,
   states, cities, tax rates, roles, payment methods, shipping zones/rates, categories,
   products, variants, inventory, coupons, settings). `profiles`, `addresses`, `carts`,

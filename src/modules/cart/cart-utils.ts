@@ -15,6 +15,7 @@ function variantLabelFor(item: CartItem) {
 
 export function toCartItemView(item: CartItem) {
   const quantityAvailable = quantityAvailableFor(item);
+  const weight = Number((item.variant ?? item.product).weight ?? 0);
 
   return {
     id: item.id,
@@ -30,6 +31,7 @@ export function toCartItemView(item: CartItem) {
     lineTotal: (Number(item.unitPriceSnapshot) * item.quantity).toFixed(2),
     quantityAvailable,
     isAvailable: quantityAvailable > 0,
+    weight,
   };
 }
 
@@ -44,5 +46,6 @@ export function toCartView(cart: Cart) {
     items,
     itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
     subtotal: items.reduce((sum, item) => sum + Number(item.lineTotal), 0).toFixed(2),
+    totalWeightKg: items.reduce((sum, item) => sum + item.weight * item.quantity, 0),
   };
 }

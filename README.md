@@ -4,13 +4,18 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 5 — Cart. Categories, products, variants, and a storefront (listing,
+**Status:** Phase 6 — Checkout. Categories, products, variants, and a storefront (listing,
 search/filter/sort/pagination, product detail pages) are live. Stock is tracked per
 product/variant with an append-only movement ledger; admins can view stock levels, filter
 for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`. Guests
 and signed-in customers can add products/variants to a persistent cart at `/cart`, update
 quantities, and remove items — server-validated against live price/stock on every mutation.
-A guest's cart merges into their account automatically on sign-in. No checkout yet.
+A guest's cart merges into their account automatically on sign-in. `/checkout` collects
+contact info, a delivery address (saved or new, data-driven city/shipping-zone resolution),
+and a shipping method, then places a Cash-on-Delivery order atomically: live price/stock
+re-validation, inventory decrement, order/payment/address snapshots, and cart clearing all
+happen in one database transaction. Order confirmation lives at `/orders/[orderNumber]`.
+No online payment gateway, order history/cancellation, or admin order management yet.
 
 ## Tech stack
 

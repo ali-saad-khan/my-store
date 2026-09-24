@@ -39,9 +39,13 @@ export default async function CartPage() {
           </p>
           <p className="text-lg font-semibold">Subtotal: {formatPrice(view.subtotal)}</p>
         </div>
-        <Button size="lg" disabled title="Checkout arrives in Phase 6">
-          Checkout
-        </Button>
+        {view.items.some((item) => !item.isAvailable) ? (
+          <Button size="lg" disabled title="Remove out-of-stock items to continue">
+            Checkout
+          </Button>
+        ) : (
+          <Button size="lg" nativeButton={false} render={<Link href="/checkout">Checkout</Link>} />
+        )}
       </div>
     </div>
   );
