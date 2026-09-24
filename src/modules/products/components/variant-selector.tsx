@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/currency";
+import { AddToCartForm } from "@/modules/cart/components/add-to-cart-form";
 
 export type AttributeGroup = {
   slug: string;
@@ -20,9 +21,11 @@ export type VariantOption = {
 };
 
 export function VariantSelector({
+  productId,
   attributeGroups,
   variants,
 }: {
+  productId: string;
   attributeGroups: AttributeGroup[];
   variants: VariantOption[];
 }) {
@@ -74,6 +77,13 @@ export function VariantSelector({
               SKU: {activeVariant.sku} ·{" "}
               {activeVariant.quantityAvailable > 0 ? "In stock" : "Out of stock"}
             </p>
+            <div className="pt-2">
+              <AddToCartForm
+                productId={productId}
+                variantId={activeVariant.id}
+                disabled={activeVariant.quantityAvailable <= 0}
+              />
+            </div>
           </>
         ) : (
           <p className="text-muted-foreground text-sm">This combination isn&apos;t available.</p>

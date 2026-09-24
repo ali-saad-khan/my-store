@@ -2,12 +2,23 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { mergeGuestCartIntoProfile } from "@/modules/cart/mutations";
+import { clearCartSessionCookie, getCartSessionToken } from "@/modules/cart/session";
 import {
   forgotPasswordSchema,
   signInSchema,
   signUpSchema,
   updatePasswordSchema,
 } from "@/validations/auth";
+
+/** Folds any guest cart into the now-signed-in profile's cart. Call right before redirecting. */
+async function mergeGuestCartOnLogin(profileId: string) {
+  const sessionToken = await getCartSessionToken();
+  if (!sessionToken) return;
+
+  await mergeGuestCartIntoProfile({ profileId, sessionToken });
+  await clearCartSessionCookie();
+}
 
 export type AuthActionState = { error?: string; success?: string } | undefined;
 
@@ -50,6 +61,7 @@ export async function signUp(
     return { success: "Check your email to confirm your account before signing in." };
   }
 
+  await mergeGuestCartOnLogin(data.session.user.id);
   redirect("/account");
 }
 
@@ -66,10 +78,11 @@ export async function signIn(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) return { error: "Invalid email or password." };
 
+  await mergeGuestCartOnLogin(data.user.id);
   redirect("/account");
 }
 

@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { check, integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  integer,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { profiles } from "./identity";
 import { productVariants, products } from "./catalog";
 
@@ -41,5 +50,16 @@ export const cartItems = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [check("cart_items_quantity_positive", sql`${table.quantity} > 0`)],
+  (table) => [
+    check("cart_items_quantity_positive", sql`${table.quantity} > 0`),
+    // One row per (cart, sellable unit) — mirrors `inventory`'s partial unique
+    // indexes. Lets `addToCart` use a single atomic upsert instead of a
+    // check-then-write that would race under concurrent requests.
+    uniqueIndex("cart_items_cart_product_unique")
+      .on(table.cartId, table.productId)
+      .where(sql`${table.variantId} IS NULL`),
+    uniqueIndex("cart_items_cart_variant_unique")
+      .on(table.cartId, table.variantId)
+      .where(sql`${table.variantId} IS NOT NULL`),
+  ],
 );

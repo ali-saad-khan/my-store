@@ -90,7 +90,15 @@ customer's saved address tomorrow never rewrites history (MasterPlan.txt section
 showing the cart UI without a live product lookup on every render. It is **not** trusted at
 checkout — checkout (Phase 6) re-validates product/variant existence, live price,
 availability, inventory, and discounts server-side before an order is created
-(MasterPlan.txt section 8).
+(MasterPlan.txt section 8). It's refreshed to the live price on every cart mutation
+(add/quantity update/merge), so it only ever goes stale for an item nobody has touched
+since a price changed.
+
+**`cart_items` has the same partial-unique-index pattern as `inventory`:** one unique index
+on `(cart_id, product_id) WHERE variant_id IS NULL` and one on
+`(cart_id, variant_id) WHERE variant_id IS NOT NULL`. This lets `addToCart` use a single
+atomic `INSERT ... ON CONFLICT DO UPDATE` instead of a check-then-write, so two concurrent
+"Add to cart" requests for the same item can't create duplicate rows.
 
 **Money is `numeric`, not `float`/`integer` cents.** Avoids floating-point rounding error
 without committing to a specific currency's minor-unit convention (PKR has none; other

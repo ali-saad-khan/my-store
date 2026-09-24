@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatPrice } from "@/lib/currency";
+import { AddToCartForm } from "@/modules/cart/components/add-to-cart-form";
 import { getProductBySlug } from "@/modules/products/queries";
 import { VariantSelector } from "@/modules/products/components/variant-selector";
 import { buildAttributeGroups, toVariantOptions } from "@/modules/products/variant-utils";
@@ -63,11 +64,12 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
 
           {product.hasVariants ? (
             <VariantSelector
+              productId={product.id}
               attributeGroups={buildAttributeGroups(product.variants)}
               variants={toVariantOptions(product.variants)}
             />
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-2">
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-semibold">{formatPrice(product.price ?? "0")}</span>
                 {product.compareAtPrice &&
@@ -80,6 +82,9 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
               <p className="text-muted-foreground text-sm">
                 SKU: {product.sku} · {simpleStock > 0 ? "In stock" : "Out of stock"}
               </p>
+              <div className="pt-2">
+                <AddToCartForm productId={product.id} disabled={simpleStock <= 0} />
+              </div>
             </div>
           )}
 

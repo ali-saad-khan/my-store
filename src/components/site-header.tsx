@@ -2,11 +2,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, getUserRoles } from "@/modules/auth/session";
 import { SignOutButton } from "@/modules/auth/components/sign-out-button";
+import { getCartItemCount } from "@/modules/cart/queries";
 
 /** Minimal nav. Full site UI/branding is Phase 21. */
 export async function SiteHeader() {
   const user = await getCurrentUser();
-  const userRoleNames = user ? await getUserRoles(user.id) : [];
+  const [userRoleNames, cartItemCount] = await Promise.all([
+    user ? getUserRoles(user.id) : Promise.resolve([]),
+    getCartItemCount(),
+  ]);
   const isAdmin = userRoleNames.includes("admin");
 
   return (
@@ -25,6 +29,12 @@ export async function SiteHeader() {
         </nav>
       </div>
       <nav className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          nativeButton={false}
+          render={<Link href="/cart">Cart{cartItemCount > 0 ? ` (${cartItemCount})` : ""}</Link>}
+        />
         {user ? (
           <>
             {isAdmin && (

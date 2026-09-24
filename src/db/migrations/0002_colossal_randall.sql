@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX "cart_items_cart_product_unique" ON "cart_items" USING btree ("cart_id","product_id") WHERE "cart_items"."variant_id" IS NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "cart_items_cart_variant_unique" ON "cart_items" USING btree ("cart_id","variant_id") WHERE "cart_items"."variant_id" IS NOT NULL;
