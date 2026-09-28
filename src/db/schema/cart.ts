@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { profiles } from "./identity";
 import { productVariants, products } from "./catalog";
+import { coupons } from "./coupons";
 
 /** A cart belongs to a signed-in profile OR is identified by a guest session token. */
 export const carts = pgTable(
@@ -20,6 +21,9 @@ export const carts = pgTable(
     profileId: uuid("profile_id").references(() => profiles.id, { onDelete: "cascade" }),
     sessionToken: text("session_token").unique(),
     currencyCode: text("currency_code").notNull(),
+    // Applied coupon, re-validated (dates/usage limits/min order/eligible items)
+    // on every cart view and authoritatively re-checked again at order creation.
+    couponId: uuid("coupon_id").references(() => coupons.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),

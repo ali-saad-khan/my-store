@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import {
   carts,
   cartItems,
+  couponUsages,
   orderAddresses,
   orderItems,
   orderStatusHistory,
@@ -16,6 +17,7 @@ import {
 } from "@/db/schema";
 import { DEFAULT_MARKET } from "@/config/market";
 import { getSellableItem } from "@/modules/cart/queries";
+import { isCouponValidationError, validateCoupon } from "@/modules/coupons/discount";
 import { adjustInventoryTx, type DbTransaction } from "@/modules/inventory/mutations";
 import { calculateShippingCost } from "./shipping-cost";
 import { generateOrderNumber } from "./order-number";
@@ -59,6 +61,13 @@ export class PaymentMethodUnavailableError extends Error {
   constructor() {
     super("Cash on Delivery isn't available right now.");
     this.name = "PaymentMethodUnavailableError";
+  }
+}
+
+export class CouponNoLongerValidError extends Error {
+  constructor(message: string) {
+    super(`${message} Remove it to continue.`);
+    this.name = "CouponNoLongerValidError";
   }
 }
 
@@ -107,6 +116,7 @@ export async function placeOrder(params: {
       }
       lines.push({
         ...sellable,
+        cartItemId: item.id,
         productId: item.productId,
         variantId: item.variantId,
         quantity: item.quantity,
@@ -115,6 +125,29 @@ export async function placeOrder(params: {
 
     const subtotal = round2(lines.reduce((sum, l) => sum + Number(l.price) * l.quantity, 0));
     const totalWeightKg = lines.reduce((sum, l) => sum + Number(l.weight ?? 0) * l.quantity, 0);
+
+    let discountTotal = 0;
+    let appliedCouponId: string | null = null;
+    const perLineDiscount = new Map<string, number>();
+    if (cart.couponId) {
+      try {
+        const result = await validateCoupon(tx, {
+          identifier: { couponId: cart.couponId },
+          profileId: params.profileId,
+          lines: lines.map((line) => ({
+            key: line.cartItemId,
+            productId: line.productId,
+            lineSubtotal: Number(line.price) * line.quantity,
+          })),
+        });
+        discountTotal = result.discountAmount;
+        appliedCouponId = result.coupon.id;
+        for (const [key, amount] of result.perLineDiscount) perLineDiscount.set(key, amount);
+      } catch (error) {
+        if (isCouponValidationError(error)) throw new CouponNoLongerValidError(error.message);
+        throw error;
+      }
+    }
 
     const [rate] = await tx
       .select()
@@ -136,8 +169,9 @@ export async function placeOrder(params: {
       params.address.countryId,
       params.address.stateId,
     );
-    const taxTotal = round2(subtotal * taxRate);
-    const total = round2(subtotal + shippingCost + taxTotal);
+    const taxableAmount = round2(subtotal - discountTotal);
+    const taxTotal = round2(taxableAmount * taxRate);
+    const total = round2(taxableAmount + shippingCost + taxTotal);
 
     const [order] = await tx
       .insert(orders)
@@ -149,9 +183,11 @@ export async function placeOrder(params: {
         status: "pending",
         currencyCode: DEFAULT_MARKET.currencyCode,
         subtotal: subtotal.toFixed(2),
+        discountTotal: discountTotal.toFixed(2),
         shippingTotal: shippingCost.toFixed(2),
         taxTotal: taxTotal.toFixed(2),
         total: total.toFixed(2),
+        couponId: appliedCouponId,
         paymentMethodId: codMethod.id,
         notes: params.notes,
       })
@@ -167,6 +203,7 @@ export async function placeOrder(params: {
         variantLabelSnapshot: line.variantLabel,
         unitPrice: line.price,
         quantity: line.quantity,
+        discountAmount: (perLineDiscount.get(line.cartItemId) ?? 0).toFixed(2),
         subtotal: round2(Number(line.price) * line.quantity).toFixed(2),
       });
 
@@ -178,6 +215,15 @@ export async function placeOrder(params: {
         referenceType: "order",
         referenceId: order.id,
         actorId: params.profileId,
+      });
+    }
+
+    if (appliedCouponId) {
+      await tx.insert(couponUsages).values({
+        couponId: appliedCouponId,
+        orderId: order.id,
+        profileId: params.profileId,
+        discountAmount: discountTotal.toFixed(2),
       });
     }
 

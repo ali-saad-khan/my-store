@@ -30,6 +30,7 @@ export async function getActiveCart() {
   return db.query.carts.findFirst({
     where: ownerCondition(owner),
     with: {
+      coupon: true,
       items: {
         with: {
           product: {

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Checkout" };
 
 export default async function CheckoutPage() {
   const cart = await getActiveCart();
-  const view = cart ? toCartView(cart) : null;
+  const view = cart ? await toCartView(cart) : null;
   if (!view || view.items.length === 0) redirect("/cart");
 
   const [profile, geography, paymentMethods] = await Promise.all([
@@ -27,6 +27,9 @@ export default async function CheckoutPage() {
       <h1 className="text-2xl font-semibold">Checkout</h1>
       <CheckoutForm
         cart={view}
+        coupon={view.coupon}
+        discountAmount={view.discountAmount}
+        couponError={view.couponError}
         profileEmail={profile?.email ?? null}
         profilePhone={profile?.phone ?? null}
         savedAddresses={savedAddresses.map((address) => ({

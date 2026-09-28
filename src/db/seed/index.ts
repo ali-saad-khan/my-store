@@ -50,12 +50,13 @@ async function main() {
   await db.delete(shippingRates);
   await db.delete(shippingZoneLocations);
   await db.delete(shippingZones);
-  await db.delete(coupons);
   await db.delete(paymentMethods);
-  // roles is intentionally NOT reset here: once Phase 2 auth is live, real
-  // user_roles rows reference it, and roles.id is regenerated on every insert
-  // (see the idempotent upsert below), so deleting it would cascade-delete
-  // every customer's/admin's role grants.
+  // roles and coupons are intentionally NOT reset here: once real orders/carts
+  // reference a coupon (coupon_usages, orders.coupon_id, carts.coupon_id) or
+  // real user_roles reference a role, deleting-then-reinserting would either
+  // cascade-delete usage history or silently null out live references, since
+  // both tables' ids regenerate on every insert (see the idempotent upserts
+  // below).
   await db.delete(taxRates);
   await db.delete(cities);
   await db.delete(states);
@@ -355,26 +356,29 @@ async function main() {
   ]);
 
   console.log("Seeding coupons...");
-  await db.insert(coupons).values([
-    {
-      code: "WELCOME10",
-      description: "10% off your first order.",
-      discountType: "percentage",
-      discountValue: "10.00",
-      minOrderValue: "2000.00",
-      maxDiscountAmount: "1000.00",
-      perCustomerLimit: 1,
-      isActive: true,
-    },
-    {
-      code: "FREESHIP",
-      description: "Rs. 200 off to offset shipping.",
-      discountType: "fixed",
-      discountValue: "200.00",
-      minOrderValue: "3000.00",
-      isActive: true,
-    },
-  ]);
+  await db
+    .insert(coupons)
+    .values([
+      {
+        code: "WELCOME10",
+        description: "10% off your first order.",
+        discountType: "percentage",
+        discountValue: "10.00",
+        minOrderValue: "2000.00",
+        maxDiscountAmount: "1000.00",
+        perCustomerLimit: 1,
+        isActive: true,
+      },
+      {
+        code: "FREESHIP",
+        description: "Rs. 200 off to offset shipping.",
+        discountType: "fixed",
+        discountValue: "200.00",
+        minOrderValue: "3000.00",
+        isActive: true,
+      },
+    ])
+    .onConflictDoNothing({ target: coupons.code });
 
   console.log("Seeding settings...");
   await db.insert(settings).values([

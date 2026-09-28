@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { productVariants, products } from "@/db/schema";
 
@@ -69,4 +69,13 @@ export async function getProductForAdmin(id: string) {
     },
   });
   return product ?? null;
+}
+
+/** For the coupon product-restriction picker. */
+export async function listProductOptions() {
+  return db
+    .select({ id: products.id, name: products.name, sku: products.sku })
+    .from(products)
+    .where(isNull(products.deletedAt))
+    .orderBy(asc(products.name));
 }

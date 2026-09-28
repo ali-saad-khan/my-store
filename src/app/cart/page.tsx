@@ -5,12 +5,13 @@ import { formatPrice } from "@/lib/currency";
 import { toCartView } from "@/modules/cart/cart-utils";
 import { CartItemRow } from "@/modules/cart/components/cart-item-row";
 import { getActiveCart } from "@/modules/cart/queries";
+import { ApplyCouponForm } from "@/modules/coupons/components/apply-coupon-form";
 
 export const metadata: Metadata = { title: "Your Cart" };
 
 export default async function CartPage() {
   const cart = await getActiveCart();
-  const view = cart ? toCartView(cart) : null;
+  const view = cart ? await toCartView(cart) : null;
 
   if (!view || view.items.length === 0) {
     return (
@@ -32,12 +33,27 @@ export default async function CartPage() {
         ))}
       </div>
 
+      <ApplyCouponForm
+        coupon={view.coupon}
+        discountAmount={view.discountAmount}
+        couponError={view.couponError}
+      />
+
       <div className="flex items-center justify-between border-t pt-4">
         <div>
           <p className="text-muted-foreground text-sm">
             {view.itemCount} item{view.itemCount === 1 ? "" : "s"}
           </p>
-          <p className="text-lg font-semibold">Subtotal: {formatPrice(view.subtotal)}</p>
+          {Number(view.discountAmount) > 0 ? (
+            <>
+              <p className="text-muted-foreground text-sm line-through">
+                {formatPrice(view.subtotal)}
+              </p>
+              <p className="text-lg font-semibold">Total: {formatPrice(view.total)}</p>
+            </>
+          ) : (
+            <p className="text-lg font-semibold">Subtotal: {formatPrice(view.subtotal)}</p>
+          )}
         </div>
         {view.items.some((item) => !item.isAvailable) ? (
           <Button size="lg" disabled title="Remove out-of-stock items to continue">

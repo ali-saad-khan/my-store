@@ -205,6 +205,36 @@ Phases 4 and 7):
   `orders`, `reviews`, `wishlists`, and `notifications` all require a real Supabase Auth
   user and are seeded starting in Phase 2+.
 
+## Scope note: Phase 9 (Coupons) design decisions
+
+- **One active coupon per cart.** `carts.coupon_id` holds at most one applied coupon (added by
+  migration `0003_married_havok.sql`). Stacking multiple coupons isn't supported — applying a
+  new code replaces whatever was there.
+- **Re-validated on every read, authoritatively re-checked at checkout.** `toCartView()`
+  re-runs the full rules engine (`src/modules/coupons/discount.ts`'s `validateCoupon`) against
+  the live cart every time the cart/checkout page renders — an expired coupon or one that hit
+  its usage limit since being applied shows a `couponError` instead of a stale discount. The
+  same function runs again *inside* `placeOrder()`'s transaction, right before the order is
+  created, exactly like inventory/price re-validation (MasterPlan.txt section 8) — never
+  trust a discount computed earlier in the request.
+- **Discount is applied before tax.** `taxTotal = (subtotal - discountTotal) * taxRate`. This
+  is a disclosed business-logic choice (tax-after-discount is the more common convention), not
+  a MasterPlan requirement — revisit if the target market's tax rules require tax-on-gross.
+  Order-item-level `discount_amount` is distributed proportionally across whichever line items
+  are actually eligible for the coupon (respecting product/category restrictions), with any
+  rounding remainder folded into the last eligible line so the parts always sum exactly to the
+  order-level `discount_total`.
+- **Per-customer usage limits aren't enforced for guest checkout.** `coupon_usages.profile_id`
+  is null for a guest order, so `perCustomerLimit` can only be checked against a signed-in
+  profile's history. A guest could in principle reuse a per-customer-limited code across
+  multiple guest orders (no email-based tracking was added). Flagged here as a known gap, same
+  as the COD-availability simplification from Phase 6.
+- **Guest→profile cart merge (Phase 5) keeps whichever cart's coupon already applies:** if the
+  signed-in profile's cart already has a coupon, the guest cart's is dropped; otherwise the
+  guest cart's coupon carries over. No UI surfaces this edge case — it's rare enough (a coupon
+  applied to a guest cart that's later merged into an account that *also* has its own coupon)
+  not to warrant one yet.
+
 ## Schema overview
 
 | Domain           | Tables                                                                                                                                                             |

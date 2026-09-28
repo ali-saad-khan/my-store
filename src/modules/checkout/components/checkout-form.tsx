@@ -2,12 +2,13 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { FormMessage } from "@/components/form-message";
-import { SubmitButton } from "@/components/submit-button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/currency";
 import { placeOrderAction } from "@/modules/checkout/actions";
 import { calculateShippingCost } from "@/modules/checkout/shipping-cost";
+import { ApplyCouponForm } from "@/modules/coupons/components/apply-coupon-form";
 
 type CartView = {
   items: {
@@ -47,6 +48,9 @@ type ShippingRateOption = {
 
 export function CheckoutForm({
   cart,
+  coupon,
+  discountAmount,
+  couponError,
   profileEmail,
   profilePhone,
   savedAddresses,
@@ -55,6 +59,9 @@ export function CheckoutForm({
   paymentMethods,
 }: {
   cart: CartView;
+  coupon: { code: string; discountType: "percentage" | "fixed"; discountValue: string } | null;
+  discountAmount: string;
+  couponError: string | null;
   profileEmail: string | null;
   profilePhone: string | null;
   savedAddresses: SavedAddress[];
@@ -62,7 +69,7 @@ export function CheckoutForm({
   ratesByZoneId: Record<string, ShippingRateOption[]>;
   paymentMethods: { code: string; name: string }[];
 }) {
-  const [state, formAction] = useActionState(placeOrderAction, undefined);
+  const [state, formAction, isPlacingOrder] = useActionState(placeOrderAction, undefined);
 
   const [addressMode, setAddressMode] = useState<"saved" | "new">(
     savedAddresses.length > 0 ? "saved" : "new",
@@ -92,7 +99,7 @@ export function CheckoutForm({
     ? chosenShippingRateId!
     : (offeredRates[0]?.rate.id ?? "");
   const selectedShippingCost = offeredRates.find((r) => r.rate.id === shippingRateId)?.cost ?? 0;
-  const estimatedTotal = subtotal + selectedShippingCost;
+  const estimatedTotal = subtotal - Number(discountAmount) + selectedShippingCost;
 
   return (
     <form action={formAction} className="space-y-8">
@@ -266,11 +273,27 @@ export function CheckoutForm({
         />
       </section>
 
+      <section className="space-y-3">
+        <h2 className="font-medium">Coupon</h2>
+        <ApplyCouponForm
+          coupon={coupon}
+          discountAmount={discountAmount}
+          couponError={couponError}
+          embedded
+        />
+      </section>
+
       <section className="space-y-2 border-t pt-4">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Subtotal ({cart.items.length} item(s))</span>
           <span>{formatPrice(subtotal)}</span>
         </div>
+        {Number(discountAmount) > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Discount ({coupon?.code})</span>
+            <span>-{formatPrice(discountAmount)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Shipping</span>
           <span>{selectedShippingCost === 0 ? "Free" : formatPrice(selectedShippingCost)}</span>
@@ -284,9 +307,15 @@ export function CheckoutForm({
         </p>
       </section>
 
-      <SubmitButton size="lg" pendingText="Placing order..." disabled={offeredRates.length === 0}>
-        Place order
-      </SubmitButton>
+      <Button
+        type="submit"
+        formAction={formAction}
+        size="lg"
+        className="w-full"
+        disabled={isPlacingOrder || offeredRates.length === 0}
+      >
+        {isPlacingOrder ? "Placing order..." : "Place order"}
+      </Button>
     </form>
   );
 }

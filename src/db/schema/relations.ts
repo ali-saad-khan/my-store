@@ -156,6 +156,7 @@ export const inventoryMovementsRelations = relations(inventoryMovements, ({ one 
 
 export const cartsRelations = relations(carts, ({ one, many }) => ({
   profile: one(profiles, { fields: [carts.profileId], references: [profiles.id] }),
+  coupon: one(coupons, { fields: [carts.couponId], references: [coupons.id] }),
   items: many(cartItems),
 }));
 

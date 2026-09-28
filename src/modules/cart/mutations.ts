@@ -167,6 +167,14 @@ export async function mergeGuestCartIntoProfile(input: {
         .returning()
     )[0];
 
+    // Adopt the guest cart's coupon only if the profile cart doesn't already have one applied.
+    if (!profileCart.couponId && guestCart.couponId) {
+      await tx
+        .update(carts)
+        .set({ couponId: guestCart.couponId })
+        .where(eq(carts.id, profileCart.id));
+    }
+
     for (const guestItem of guestCart.items) {
       const sellable = await getSellableItem({
         productId: guestItem.productId,

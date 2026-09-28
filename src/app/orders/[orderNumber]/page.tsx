@@ -54,6 +54,14 @@ export default async function OrderConfirmationPage(props: PageProps<"/orders/[o
               <span className="text-muted-foreground">Subtotal</span>
               <span>{formatPrice(order.subtotal)}</span>
             </div>
+            {Number(order.discountTotal) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Discount{order.coupon ? ` (${order.coupon.code})` : ""}
+                </span>
+                <span>-{formatPrice(order.discountTotal)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Shipping</span>
               <span>{formatPrice(order.shippingTotal)}</span>

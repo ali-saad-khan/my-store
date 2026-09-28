@@ -8,6 +8,7 @@ import { resolveCartOwner } from "@/modules/cart/queries";
 import { clearCartSessionCookie } from "@/modules/cart/session";
 import { placeOrderSchema } from "@/validations/checkout";
 import {
+  CouponNoLongerValidError,
   EmptyCartError,
   InsufficientStockForOrderError,
   InvalidShippingRateError,
@@ -120,7 +121,8 @@ export async function placeOrderAction(
       error instanceof ItemUnavailableError ||
       error instanceof InsufficientStockForOrderError ||
       error instanceof InvalidShippingRateError ||
-      error instanceof PaymentMethodUnavailableError
+      error instanceof PaymentMethodUnavailableError ||
+      error instanceof CouponNoLongerValidError
     ) {
       return { error: error.message };
     }
