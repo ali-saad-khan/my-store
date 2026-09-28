@@ -271,7 +271,7 @@ export async function placeOrder(params: {
     await tx.delete(cartItems).where(eq(cartItems.cartId, cart.id));
     await tx.delete(carts).where(eq(carts.id, cart.id));
 
-    return order;
+    return { order, lines };
   });
 }
 

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/modules/auth/session";
+import { sendOrderStatusEmail } from "@/modules/notifications/emails";
 import { cancelOrderSchema, updateOrderStatusSchema } from "@/validations/orders";
 import { getOrderByNumberForViewer, getOrderForAdmin } from "./queries";
 import {
@@ -35,6 +36,16 @@ export async function cancelOrderAction(
       return { error: error.message };
     }
     throw error;
+  }
+
+  const recipientEmail = order.profile?.email ?? order.guestEmail;
+  if (recipientEmail) {
+    await sendOrderStatusEmail({
+      to: recipientEmail,
+      profileId: order.profileId,
+      orderNumber: order.orderNumber,
+      status: "cancelled",
+    });
   }
 
   revalidatePath(`/orders/${parsed.data.orderNumber}`);
@@ -73,6 +84,17 @@ export async function updateOrderStatusAction(
       return { error: error.message };
     }
     throw error;
+  }
+
+  const recipientEmail = order.profile?.email ?? order.guestEmail;
+  if (recipientEmail) {
+    await sendOrderStatusEmail({
+      to: recipientEmail,
+      profileId: order.profileId,
+      orderNumber: order.orderNumber,
+      status: parsed.data.toStatus,
+      note: parsed.data.note,
+    });
   }
 
   revalidatePath(`/admin/orders/${parsed.data.orderNumber}`);

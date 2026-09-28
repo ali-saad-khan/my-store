@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/modules/auth/session";
+import { sendLowStockAlertEmail } from "@/modules/notifications/emails";
+import { getSettingValue } from "@/modules/settings/queries";
 import { adjustInventorySchema } from "@/validations/inventory";
+import { getInventoryById } from "./queries";
 import { adjustInventory, InsufficientStockError, InventoryNotFoundError } from "./mutations";
 
 export type AdjustInventoryActionState = { error?: string; success?: string } | undefined;
@@ -25,8 +28,9 @@ export async function adjustInventoryAction(
     return { error: firstError ?? "Invalid input." };
   }
 
+  let updated;
   try {
-    await adjustInventory({
+    updated = await adjustInventory({
       inventoryId: parsed.data.inventoryId,
       type: parsed.data.type,
       quantity: parsed.data.quantity,
@@ -38,6 +42,30 @@ export async function adjustInventoryAction(
       return { error: error.message };
     }
     throw error;
+  }
+
+  const quantityAvailable = updated.quantityOnHand - updated.quantityReserved;
+  if (quantityAvailable <= updated.reorderPoint) {
+    const alertEmail = await getSettingValue<string>("support_email");
+    if (alertEmail) {
+      const withDetails = await getInventoryById(updated.id);
+      if (withDetails) {
+        const productName = withDetails.product?.name ?? withDetails.variant?.product.name ?? "Unknown product";
+        const sku = withDetails.variant?.sku ?? withDetails.product?.sku ?? "—";
+        const variantLabel = withDetails.variant
+          ? withDetails.variant.attributeValues.map(({ attributeValue }) => attributeValue.value).join(" / ")
+          : null;
+
+        await sendLowStockAlertEmail({
+          to: alertEmail,
+          productName,
+          variantLabel,
+          sku,
+          quantityAvailable,
+          reorderPoint: updated.reorderPoint,
+        });
+      }
+    }
   }
 
   revalidatePath("/admin/inventory");

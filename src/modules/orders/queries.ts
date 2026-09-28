@@ -22,6 +22,7 @@ export async function getOrderByNumberForViewer(orderNumber: string) {
       payments: { with: { transactions: true } },
       paymentMethod: true,
       coupon: true,
+      profile: true,
       statusHistory: { orderBy: (row, { asc }) => [asc(row.createdAt)] },
     },
   });

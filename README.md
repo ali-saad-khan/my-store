@@ -4,7 +4,7 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 11 — SEO. Categories, products, variants, and a storefront (listing,
+**Status:** Phase 12 — Email. Categories, products, variants, and a storefront (listing,
 search/filter/sort/pagination, product detail pages) are live. Stock is tracked per
 product/variant with an append-only movement ledger; admins can view stock levels, filter
 for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`. Guests
@@ -35,9 +35,14 @@ product page and manage the full list at `/account/wishlist`. Product and catego
 carry canonical URLs, OpenGraph/Twitter metadata, and JSON-LD (Product + AggregateRating +
 BreadcrumbList) structured data; `/sitemap.xml` (hourly-revalidated) and `/robots.txt` are
 generated from the live catalog, and private routes (admin, account, cart, checkout, order
-confirmation) are excluded via both `robots.txt` and a `noindex` meta tag. A shipping-zone
-admin UI, settings, and audit logs are deliberately deferred (see DATABASE.md). No online
-payment gateway yet.
+confirmation) are excluded via both `robots.txt` and a `noindex` meta tag. Transactional
+emails (order confirmation, order status updates including COD payment settlement, and
+admin low-stock alerts) go through a provider-agnostic abstraction
+(`src/modules/notifications`) that logs to the console in development (no Resend account
+exists for this project) and switches to Resend automatically once `RESEND_API_KEY`/
+`RESEND_FROM_EMAIL` are set — every send is recorded in the `notifications` table regardless
+of provider. A shipping-zone admin UI, settings, and audit logs are deliberately deferred
+(see DATABASE.md). No online payment gateway yet.
 
 ## Tech stack
 

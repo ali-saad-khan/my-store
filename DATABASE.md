@@ -305,6 +305,46 @@ Phases 4 and 7):
   `availability` is computed from live inventory the same way the storefront's own
   in-stock/out-of-stock label is, so the two can't disagree.
 
+## Scope note: Phase 12 (Email) design decisions
+
+- **No real Resend account exists for this project.** Per MasterPlan.txt section 35 (never
+  invent credentials, never pretend an unconfigured integration is complete), `.env.local`
+  has `RESEND_API_KEY`/`RESEND_FROM_EMAIL` present but blank. `src/modules/notifications/
+  email-service.ts`'s `getEmailProvider()` picks the real `ResendProvider` when both are set
+  and a console-logging `ConsoleProvider` otherwise — verified live: placing an order,
+  transitioning it through every status, and triggering a low-stock alert all correctly
+  logged `[email:dev-mock] NOT actually sent (no RESEND_API_KEY configured)` with the right
+  recipient/subject/body, and each attempt still wrote a row to `notifications` with
+  `status: "sent"` (the abstraction's job — handing off to a provider — succeeded; whether
+  that provider is real is a separate, disclosed fact). **Never wire a second/alternate email
+  path that bypasses `sendTransactionalEmail()` — that function is the only place a
+  `notifications` audit row gets written.**
+- **Email sending never throws back into the business flow that triggered it.**
+  `sendTransactionalEmail()` catches every provider error internally, records
+  `status: "failed"` + the error message on the `notifications` row, and returns normally —
+  by the time an order is placed or a status transitions, that database change has already
+  committed, so a flaky email provider must never roll back or block a business event that
+  already succeeded. Callers (`checkout/actions.ts`, `orders/actions.ts`,
+  `inventory/actions.ts`) call it without a surrounding try/catch on purpose.
+- **"Welcome", "Email verification", and "Password reset" from MasterPlan.txt section 23's
+  list are intentionally not built here** — Supabase Auth already sends its own signup/
+  verification/password-reset emails as part of the auth flow wired in Phase 2. Duplicating
+  them through Resend would mean two competing email systems for the same events. "Payment
+  confirmation" is folded into the generic order-status email's `delivered` case (COD
+  payment settles on delivery, per Phase 7) rather than being a separate template.
+- **Low-stock alerts fire only from the admin manual-adjustment flow**
+  (`inventory/actions.ts`), not from every checkout-triggered sale decrement. Firing one per
+  unit sold on a popular near-empty product would spam the configured `support_email`
+  recipient on every single order; a periodic or threshold-crossing-only sweep is more
+  correct future work; checked-by-hand adjustments are a natural, low-frequency moment to
+  alert instead.
+- **The order-confirmation email reads `lines` returned directly from `placeOrder()`'s
+  transaction** (already computed there — product name, variant label, price, quantity)
+  rather than re-fetching the order afterward, avoiding an extra round trip on the checkout
+  hot path. The recipient is always the `email` field submitted on the checkout form (used
+  for both guest and signed-in checkouts already), not `profiles.email`, since that's the
+  address the customer actually confirmed at checkout time.
+
 ## Schema overview
 
 | Domain           | Tables                                                                                                                                                             |

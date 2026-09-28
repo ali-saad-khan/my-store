@@ -6,6 +6,7 @@ import { createAddressForProfile, resolveCityGeography } from "@/modules/address
 import { getCurrentUser } from "@/modules/auth/session";
 import { resolveCartOwner } from "@/modules/cart/queries";
 import { clearCartSessionCookie } from "@/modules/cart/session";
+import { sendOrderConfirmationEmail } from "@/modules/notifications/emails";
 import { placeOrderSchema } from "@/validations/checkout";
 import {
   CouponNoLongerValidError,
@@ -102,7 +103,7 @@ export async function placeOrderAction(
   }
 
   try {
-    const order = await placeOrder({
+    const { order, lines } = await placeOrder({
       cartOwner: owner,
       profileId: user?.id ?? null,
       email: data.email,
@@ -113,6 +114,24 @@ export async function placeOrderAction(
     });
 
     if (!user) await clearCartSessionCookie();
+
+    await sendOrderConfirmationEmail({
+      to: data.email,
+      profileId: user?.id ?? null,
+      orderNumber: order.orderNumber,
+      lines: lines.map((line) => ({
+        productName: line.productName,
+        variantLabel: line.variantLabel,
+        quantity: line.quantity,
+        price: line.price,
+      })),
+      address,
+      subtotal: order.subtotal,
+      discountTotal: order.discountTotal,
+      shippingTotal: order.shippingTotal,
+      taxTotal: order.taxTotal,
+      total: order.total,
+    });
 
     redirect(`/orders/${order.orderNumber}`);
   } catch (error) {
