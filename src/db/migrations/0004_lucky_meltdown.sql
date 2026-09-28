@@ -1,0 +1,3 @@
+CREATE UNIQUE INDEX "wishlist_items_wishlist_product_unique" ON "wishlist_items" USING btree ("wishlist_id","product_id") WHERE "wishlist_items"."variant_id" IS NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "wishlist_items_wishlist_variant_unique" ON "wishlist_items" USING btree ("wishlist_id","variant_id") WHERE "wishlist_items"."variant_id" IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "reviews_profile_product_unique" ON "reviews" USING btree ("profile_id","product_id") WHERE "reviews"."deleted_at" IS NULL;

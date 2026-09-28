@@ -2,11 +2,27 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
+import { Pagination } from "@/components/pagination";
 import { formatPrice } from "@/lib/currency";
 import { AddToCartForm } from "@/modules/cart/components/add-to-cart-form";
+import { getCurrentUser } from "@/modules/auth/session";
 import { getProductBySlug } from "@/modules/products/queries";
 import { VariantSelector } from "@/modules/products/components/variant-selector";
 import { buildAttributeGroups, toVariantOptions } from "@/modules/products/variant-utils";
+import { DeleteReviewButton } from "@/modules/reviews/components/delete-review-button";
+import { ReviewForm } from "@/modules/reviews/components/review-form";
+import {
+  getOwnReviewForProduct,
+  getReviewSummaryForProduct,
+  listApprovedReviewsForProduct,
+} from "@/modules/reviews/queries";
+import { WishlistToggleButton } from "@/modules/wishlist/components/wishlist-toggle-button";
+import { isProductInWishlist } from "@/modules/wishlist/queries";
+
+const reviewsPageSearchSchema = z.object({
+  reviewsPage: z.coerce.number().int().min(1).default(1),
+});
 
 export async function generateMetadata(props: PageProps<"/products/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
@@ -21,6 +37,9 @@ export async function generateMetadata(props: PageProps<"/products/[slug]">): Pr
 
 export default async function ProductPage(props: PageProps<"/products/[slug]">) {
   const { slug } = await props.params;
+  const rawSearch = await props.searchParams;
+  const { reviewsPage } = reviewsPageSearchSchema.parse(rawSearch);
+
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
@@ -31,6 +50,14 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
     (sum, row) => sum + (row.quantityOnHand - row.quantityReserved),
     0,
   );
+
+  const user = await getCurrentUser();
+  const [reviewSummary, reviewsResult, ownReview, inWishlist] = await Promise.all([
+    getReviewSummaryForProduct(product.id),
+    listApprovedReviewsForProduct(product.id, reviewsPage),
+    user ? getOwnReviewForProduct(user.id, product.id) : null,
+    user ? isProductInWishlist(user.id, product.id) : false,
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -60,7 +87,23 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
           <div>
             {product.brand && <p className="text-muted-foreground text-sm">{product.brand}</p>}
             <h1 className="text-2xl font-semibold">{product.name}</h1>
+            {reviewSummary.count > 0 && (
+              <p className="text-muted-foreground mt-1 text-sm">
+                {"★".repeat(Math.round(reviewSummary.average ?? 0))}
+                {"☆".repeat(5 - Math.round(reviewSummary.average ?? 0))}{" "}
+                {reviewSummary.average?.toFixed(1)} ({reviewSummary.count} review
+                {reviewSummary.count === 1 ? "" : "s"})
+              </p>
+            )}
           </div>
+
+          {user && (
+            <WishlistToggleButton
+              productId={product.id}
+              productSlug={product.slug}
+              initialInWishlist={inWishlist}
+            />
+          )}
 
           {product.hasVariants ? (
             <VariantSelector
@@ -92,6 +135,71 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
             <p className="text-muted-foreground text-sm leading-relaxed">{product.description}</p>
           )}
         </div>
+      </div>
+
+      <div className="mt-12 max-w-2xl space-y-6">
+        <h2 className="text-xl font-semibold">Reviews</h2>
+
+        {user ? (
+          <div className="border-border space-y-3 rounded-lg border p-4">
+            <h3 className="text-sm font-medium">
+              {ownReview ? "Your review" : "Write a review"}
+            </h3>
+            <ReviewForm
+              productId={product.id}
+              productSlug={product.slug}
+              existingReview={
+                ownReview
+                  ? { rating: ownReview.rating, title: ownReview.title, body: ownReview.body }
+                  : undefined
+              }
+            />
+            {ownReview && (
+              <DeleteReviewButton reviewId={ownReview.id} productSlug={product.slug} />
+            )}
+            {ownReview && ownReview.status !== "approved" && (
+              <p className="text-muted-foreground text-xs">
+                Your review is {ownReview.status === "pending" ? "awaiting moderation" : "not shown publicly"} and
+                only visible to you until approved.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            <Link href="/login" className="underline">
+              Sign in
+            </Link>{" "}
+            to write a review.
+          </p>
+        )}
+
+        {reviewsResult.items.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No reviews yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {reviewsResult.items.map((review) => (
+              <div key={review.id} className="border-border border-t pt-4 text-sm">
+                <p className="font-medium">
+                  {"★".repeat(review.rating)}
+                  {"☆".repeat(5 - review.rating)}
+                  {review.title && <span className="ml-2">{review.title}</span>}
+                </p>
+                {review.body && <p className="text-muted-foreground mt-1">{review.body}</p>}
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {review.profile.fullName ?? "Verified customer"} ·{" "}
+                  {new Date(review.createdAt).toLocaleDateString()}
+                  {review.orderItemId && " · Verified purchase"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Pagination
+          page={reviewsResult.page}
+          totalPages={reviewsResult.totalPages}
+          buildHref={(page) => `/products/${product.slug}?reviewsPage=${page}`}
+        />
       </div>
     </div>
   );

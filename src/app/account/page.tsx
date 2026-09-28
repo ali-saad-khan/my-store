@@ -39,6 +39,16 @@ export default async function AccountPage() {
           <CardDescription>View order history and track order status.</CardDescription>
         </CardHeader>
       </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <Link href="/account/wishlist" className="underline">
+              Your wishlist
+            </Link>
+          </CardTitle>
+          <CardDescription>Products you&apos;ve saved for later.</CardDescription>
+        </CardHeader>
+      </Card>
       <SignOutButton />
     </div>
   );

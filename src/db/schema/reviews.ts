@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { reviewStatusEnum } from "./enums";
 import { profiles } from "./identity";
 import { products } from "./catalog";
@@ -25,5 +25,12 @@ export const reviews = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (table) => [check("reviews_rating_range", sql`${table.rating} >= 1 AND ${table.rating} <= 5`)],
+  (table) => [
+    check("reviews_rating_range", sql`${table.rating} >= 1 AND ${table.rating} <= 5`),
+    // One active review per customer per product — soft-deleting one (deletedAt) frees the
+    // slot for a new review rather than blocking it forever.
+    uniqueIndex("reviews_profile_product_unique")
+      .on(table.profileId, table.productId)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
 );

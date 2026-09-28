@@ -4,7 +4,7 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 9 — Coupons. Categories, products, variants, and a storefront (listing,
+**Status:** Phase 10 — Reviews/Wishlist. Categories, products, variants, and a storefront (listing,
 search/filter/sort/pagination, product detail pages) are live. Stock is tracked per
 product/variant with an append-only movement ledger; admins can view stock levels, filter
 for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`. Guests
@@ -26,9 +26,14 @@ searchable customer list — all behind a shared nav shell. A customer can apply
 code on the cart or checkout page (percentage/fixed, min order value, max discount cap,
 usage limits, per-customer limits, product/category restriction, active window) — the
 discount is re-validated server-side on every view and again inside the checkout
-transaction, and admins manage coupons at `/admin/coupons`. Reviews/wishlist, a
-shipping-zone admin UI, settings, and audit logs are deliberately deferred (see
-DATABASE.md). No online payment gateway yet.
+transaction, and admins manage coupons at `/admin/coupons`. Signed-in customers can rate
+and review a product (one review per customer per product, edited in place, re-queued for
+moderation on every edit) directly on the product page — reviews only show publicly once an
+admin approves them at `/admin/reviews`, and a review earns a "verified purchase" badge when
+it matches a delivered order. Customers can also save products to a wishlist from the
+product page and manage the full list at `/account/wishlist`. A shipping-zone admin UI,
+settings, and audit logs are deliberately deferred (see DATABASE.md). No online payment
+gateway yet.
 
 ## Tech stack
 

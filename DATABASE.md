@@ -235,6 +235,38 @@ Phases 4 and 7):
   applied to a guest cart that's later merged into an account that *also* has its own coupon)
   not to warrant one yet.
 
+## Scope note: Phase 10 (Reviews/Wishlist) design decisions
+
+- **One active review per customer per product**, enforced by a partial unique index
+  (`reviews_profile_product_unique` on `(profile_id, product_id) WHERE deleted_at IS NULL`,
+  migration `0004_lucky_meltdown.sql`) — same partial-unique-index pattern `cart_items`
+  already used for its per-cart uniqueness. Submitting a review when one already exists is an
+  upsert (`ON CONFLICT ... DO UPDATE`): editing a review resets it to `pending` so moderation
+  applies to the current content, not just the first submission. A customer's own delete is a
+  soft delete (sets `deleted_at`), which frees the slot for a genuinely new review later
+  rather than blocking it forever.
+- **No purchase requirement to review.** Any signed-in customer can review any product —
+  MasterPlan.txt doesn't require a verified purchase, and gating it would block early reviews
+  on a low-traffic store. Instead, `findVerifyingOrderItem()` links the review to a matching
+  *delivered* order item at write time (`reviews.order_item_id`, already in the Phase 1
+  schema) purely for the "Verified purchase" badge — a cosmetic trust signal, not an access
+  gate.
+- **Wishlist is product-level only for this pass**, not per-variant, even though
+  `wishlist_items.variant_id` exists (nullable, unused) in the Phase 1 schema. Nothing in the
+  UI selects a variant ahead of the product detail page, so plumbing a selected variant into
+  the wishlist toggle button would be premature; revisit if a customer-facing need for
+  variant-specific wishlisting shows up.
+- **Reviews are managed inline on the product page** (write/edit/delete right where you'd
+  naturally do it), not through a separate `/account/reviews` list — mirrors how addresses
+  are managed inline during checkout rather than through a dedicated `/account/addresses`
+  page. Wishlist, by contrast, has no other natural home, so it gets its own
+  `/account/wishlist` page.
+- **No rating/review aggregates on product listing/category cards** — only the product detail
+  page shows the average-rating summary. Adding it to `listProducts()` would mean an extra
+  aggregated join on every catalog listing render; deferred until the catalog's size actually
+  makes it worth the query cost. Review structured data (JSON-LD) for SEO is explicitly
+  Phase 11, not this phase.
+
 ## Schema overview
 
 | Domain           | Tables                                                                                                                                                             |
