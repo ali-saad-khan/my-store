@@ -4,7 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Pagination } from "@/components/pagination";
+import { JsonLd } from "@/components/json-ld";
+import { DEFAULT_MARKET } from "@/config/market";
 import { formatPrice } from "@/lib/currency";
+import { absoluteUrl, buildBreadcrumbJsonLd, buildOpenGraph, buildProductJsonLd } from "@/lib/seo";
 import { AddToCartForm } from "@/modules/cart/components/add-to-cart-form";
 import { getCurrentUser } from "@/modules/auth/session";
 import { getProductBySlug } from "@/modules/products/queries";
@@ -29,9 +32,27 @@ export async function generateMetadata(props: PageProps<"/products/[slug]">): Pr
   const product = await getProductBySlug(slug);
   if (!product) return {};
 
+  const title = product.seoTitle ?? product.name;
+  const description = product.seoDescription ?? product.shortDescription ?? undefined;
+  const url = absoluteUrl(`/products/${product.slug}`);
+  const primaryImageUrl = product.images[0]?.url;
+
   return {
-    title: product.seoTitle ?? product.name,
-    description: product.seoDescription ?? product.shortDescription ?? undefined,
+    title,
+    description,
+    keywords: product.seoKeywords ?? undefined,
+    alternates: { canonical: url },
+    openGraph: buildOpenGraph({
+      title,
+      description,
+      url,
+      images: primaryImageUrl ? [primaryImageUrl] : undefined,
+    }),
+    twitter: {
+      title,
+      description,
+      images: primaryImageUrl ? [primaryImageUrl] : undefined,
+    },
   };
 }
 
@@ -59,8 +80,50 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
     user ? isProductInWishlist(user.id, product.id) : false,
   ]);
 
+  const activeVariants = product.variants.filter((variant) => variant.status === "active");
+  const priceInfo = product.hasVariants
+    ? (() => {
+        if (activeVariants.length === 0) return null;
+        const prices = activeVariants.map((variant) => Number(variant.price));
+        const low = Math.min(...prices);
+        const high = Math.max(...prices);
+        return low === high
+          ? { amount: low.toFixed(2), currency: DEFAULT_MARKET.currencyCode }
+          : { low: low.toFixed(2), high: high.toFixed(2), currency: DEFAULT_MARKET.currencyCode };
+      })()
+    : product.price
+      ? { amount: product.price, currency: DEFAULT_MARKET.currencyCode }
+      : null;
+  const inStock = product.hasVariants
+    ? activeVariants.some(
+        (variant) =>
+          variant.inventory.reduce((sum, row) => sum + (row.quantityOnHand - row.quantityReserved), 0) >
+          0,
+      )
+    : simpleStock > 0;
+
+  const breadcrumbItems = [
+    { name: "Home", url: absoluteUrl("/") },
+    ...(category ? [{ name: category.name, url: absoluteUrl(`/categories/${category.slug}`) }] : []),
+    { name: product.name, url: absoluteUrl(`/products/${product.slug}`) },
+  ];
+
+  const productJsonLd = buildProductJsonLd({
+    name: product.name,
+    description: product.seoDescription ?? product.description ?? product.shortDescription,
+    slug: product.slug,
+    sku: product.hasVariants ? null : product.sku,
+    brand: product.brand,
+    images: product.images.map((image) => image.url),
+    price: priceInfo,
+    inStock,
+    reviewSummary,
+  });
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={buildBreadcrumbJsonLd(breadcrumbItems)} />
       {category && (
         <Link
           href={`/categories/${category.slug}`}

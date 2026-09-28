@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { absoluteUrl, buildOpenGraph } from "@/lib/seo";
 import { getTopLevelCategories } from "@/modules/categories/queries";
 
+const TITLE = "Categories";
+const DESCRIPTION = "Browse products by category.";
+
 export const metadata: Metadata = {
-  title: "Categories",
-  description: "Browse products by category.",
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: absoluteUrl("/categories") },
+  openGraph: buildOpenGraph({ title: TITLE, description: DESCRIPTION, url: absoluteUrl("/categories") }),
 };
 
 export default async function CategoriesPage() {

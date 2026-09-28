@@ -7,7 +7,7 @@ import { CartItemRow } from "@/modules/cart/components/cart-item-row";
 import { getActiveCart } from "@/modules/cart/queries";
 import { ApplyCouponForm } from "@/modules/coupons/components/apply-coupon-form";
 
-export const metadata: Metadata = { title: "Your Cart" };
+export const metadata: Metadata = { title: "Your Cart", robots: { index: false, follow: false } };
 
 export default async function CartPage() {
   const cart = await getActiveCart();

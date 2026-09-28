@@ -4,7 +4,7 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 10 — Reviews/Wishlist. Categories, products, variants, and a storefront (listing,
+**Status:** Phase 11 — SEO. Categories, products, variants, and a storefront (listing,
 search/filter/sort/pagination, product detail pages) are live. Stock is tracked per
 product/variant with an append-only movement ledger; admins can view stock levels, filter
 for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`. Guests
@@ -31,9 +31,13 @@ and review a product (one review per customer per product, edited in place, re-q
 moderation on every edit) directly on the product page — reviews only show publicly once an
 admin approves them at `/admin/reviews`, and a review earns a "verified purchase" badge when
 it matches a delivered order. Customers can also save products to a wishlist from the
-product page and manage the full list at `/account/wishlist`. A shipping-zone admin UI,
-settings, and audit logs are deliberately deferred (see DATABASE.md). No online payment
-gateway yet.
+product page and manage the full list at `/account/wishlist`. Product and category pages
+carry canonical URLs, OpenGraph/Twitter metadata, and JSON-LD (Product + AggregateRating +
+BreadcrumbList) structured data; `/sitemap.xml` (hourly-revalidated) and `/robots.txt` are
+generated from the live catalog, and private routes (admin, account, cart, checkout, order
+confirmation) are excluded via both `robots.txt` and a `noindex` meta tag. A shipping-zone
+admin UI, settings, and audit logs are deliberately deferred (see DATABASE.md). No online
+payment gateway yet.
 
 ## Tech stack
 

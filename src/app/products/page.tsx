@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import { Pagination } from "@/components/pagination";
+import { absoluteUrl, buildOpenGraph } from "@/lib/seo";
 import { listProducts } from "@/modules/products/queries";
 import { ProductFilters } from "@/modules/products/components/product-filters";
 import { ProductGrid } from "@/modules/products/components/product-grid";
 import { productListSearchSchema } from "@/validations/catalog";
 
+const TITLE = "All Products";
+const DESCRIPTION = "Browse the full product catalog.";
+
 export const metadata: Metadata = {
-  title: "All Products",
-  description: "Browse the full product catalog.",
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: absoluteUrl("/products") },
+  openGraph: buildOpenGraph({ title: TITLE, description: DESCRIPTION, url: absoluteUrl("/products") }),
 };
 
 export default async function ProductsPage(props: PageProps<"/products">) {

@@ -267,6 +267,44 @@ Phases 4 and 7):
   makes it worth the query cost. Review structured data (JSON-LD) for SEO is explicitly
   Phase 11, not this phase.
 
+## Scope note: Phase 11 (SEO) design decisions
+
+- **`openGraph`/`twitter` are NOT deep-merged across layout and page** — confirmed live: the
+  product page's own `openGraph` (title/description/url/images only) silently dropped
+  `og:site_name`/`og:type`/`og:locale` from the root layout's defaults, because Next replaces
+  the whole nested object per segment rather than merging it field-by-field. Fixed with
+  `buildOpenGraph()` in `src/lib/seo.ts`, which every page's `openGraph` is built through so
+  the site-wide defaults can never silently go missing again. **Any future page that sets its
+  own `openGraph` must go through `buildOpenGraph()`, not a bare object literal.**
+- **JSON-LD is escaped defensively.** `src/components/json-ld.tsx` replaces `<` with
+  `<` before injecting into `dangerouslySetInnerHTML`, so admin-entered content (a
+  product description containing literal `</script>`) can't break out of the script tag.
+  Product/category names and descriptions come from trusted admin input, not raw customer
+  input, but this costs nothing and removes the question entirely.
+- **Sitemap is revalidated hourly, not build-time-only.** `src/app/sitemap.ts` queries the
+  live `products`/`categories` tables directly; without `export const revalidate = 3600` it
+  would statically bake in whatever the catalog looked like at the last deploy and silently
+  go stale as admins add/edit products between deploys (this store has no scheduled
+  rebuilds).
+- **Private routes are excluded two ways, not one:** `robots.txt` (`Disallow`) stops
+  well-behaved crawlers from ever requesting `/admin`, `/account`, `/checkout`, `/cart`,
+  `/orders/*`, and the auth pages, and a `<meta name="robots" content="noindex,nofollow">`
+  tag (set once on `admin/layout.tsx` and a new `account/layout.tsx`, inherited by every page
+  under them without each page repeating it — verified live that the merge actually
+  propagates) covers any crawler that ignores `robots.txt` or a page that gets linked
+  externally despite the disallow. `/login`, `/register`, etc. rely on `robots.txt` alone
+  (low duplicate-content risk, not worth six more one-line edits).
+- **Category breadcrumbs are one level deep** (Home → Category), matching the current flat
+  seed data (no category is nested under another yet) and `getCategoryBySlug()`'s existing
+  shape, which doesn't return a parent chain. Product breadcrumbs use the product's first
+  linked category, same simplification `getProductBySlug()` already made in Phase 3. A
+  multi-level parent chain is real future work if categories actually get nested.
+- **Product structured data uses `AggregateOffer` (price range) for variant products** and a
+  single `Offer` for simple products — `priceCurrency` always comes from
+  `DEFAULT_MARKET.currencyCode` (Phase 0's single-market rule), never hard-coded `"PKR"`.
+  `availability` is computed from live inventory the same way the storefront's own
+  in-stock/out-of-stock label is, so the two can't disagree.
+
 ## Schema overview
 
 | Domain           | Tables                                                                                                                                                             |

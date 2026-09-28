@@ -6,7 +6,10 @@ import { CancelOrderButton } from "@/modules/orders/components/cancel-order-butt
 import { getOrderByNumberForViewer } from "@/modules/orders/queries";
 import { CUSTOMER_CANCELLABLE_STATUSES, ORDER_STATUS_LABELS } from "@/modules/orders/status";
 
-export const metadata: Metadata = { title: "Order confirmation" };
+export const metadata: Metadata = {
+  title: "Order confirmation",
+  robots: { index: false, follow: false },
+};
 
 export default async function OrderConfirmationPage(props: PageProps<"/orders/[orderNumber]">) {
   const { orderNumber } = await props.params;

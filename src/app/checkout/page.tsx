@@ -7,7 +7,7 @@ import { getActiveCart } from "@/modules/cart/queries";
 import { CheckoutForm } from "@/modules/checkout/components/checkout-form";
 import { getActivePaymentMethods, getCheckoutGeography } from "@/modules/checkout/queries";
 
-export const metadata: Metadata = { title: "Checkout" };
+export const metadata: Metadata = { title: "Checkout", robots: { index: false, follow: false } };
 
 export default async function CheckoutPage() {
   const cart = await getActiveCart();

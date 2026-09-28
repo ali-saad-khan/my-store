@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
+import { getSiteUrl, SITE_NAME } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,9 +14,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const DESCRIPTION = "Quality essentials, delivered across Pakistan.";
+
 export const metadata: Metadata = {
-  title: { default: "my-store", template: "%s | my-store" },
-  description: "Quality essentials, delivered across Pakistan.",
+  metadataBase: new URL(getSiteUrl()),
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  description: DESCRIPTION,
+  openGraph: {
+    siteName: SITE_NAME,
+    type: "website",
+    locale: "en_PK",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

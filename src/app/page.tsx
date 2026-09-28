@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { absoluteUrl, buildOpenGraph, SITE_NAME } from "@/lib/seo";
 import { getTopLevelCategories } from "@/modules/categories/queries";
 import { ProductGrid } from "@/modules/products/components/product-grid";
 import { getFeaturedProducts } from "@/modules/products/queries";
+
+const DESCRIPTION = "Quality essentials, delivered across Pakistan.";
+
+export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/") },
+  openGraph: buildOpenGraph({ title: SITE_NAME, description: DESCRIPTION, url: absoluteUrl("/") }),
+};
 
 export default async function Home() {
   const [featured, categories] = await Promise.all([

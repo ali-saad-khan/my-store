@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
 import { Pagination } from "@/components/pagination";
+import { absoluteUrl, buildBreadcrumbJsonLd, buildOpenGraph } from "@/lib/seo";
 import { getCategoryBySlug } from "@/modules/categories/queries";
 import { ProductFilters } from "@/modules/products/components/product-filters";
 import { ProductGrid } from "@/modules/products/components/product-grid";
@@ -13,9 +15,21 @@ export async function generateMetadata(props: PageProps<"/categories/[slug]">): 
   const category = await getCategoryBySlug(slug);
   if (!category) return {};
 
+  const title = category.seoTitle ?? category.name;
+  const description = category.seoDescription ?? category.description ?? undefined;
+  const url = absoluteUrl(`/categories/${category.slug}`);
+
   return {
-    title: category.seoTitle ?? category.name,
-    description: category.seoDescription ?? category.description ?? undefined,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: buildOpenGraph({
+      title,
+      description,
+      url,
+      images: category.imageUrl ? [category.imageUrl] : undefined,
+    }),
+    twitter: { title, description, images: category.imageUrl ? [category.imageUrl] : undefined },
   };
 }
 
@@ -29,8 +43,14 @@ export default async function CategoryPage(props: PageProps<"/categories/[slug]"
 
   const result = await listProducts({ ...search, categorySlug: slug });
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Home", url: absoluteUrl("/") },
+    { name: category.name, url: absoluteUrl(`/categories/${category.slug}`) },
+  ]);
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+      <JsonLd data={breadcrumbJsonLd} />
       <div>
         <h1 className="text-2xl font-semibold">{category.name}</h1>
         {category.description && (
