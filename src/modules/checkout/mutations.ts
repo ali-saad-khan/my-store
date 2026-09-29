@@ -16,10 +16,13 @@ import {
   taxRates,
 } from "@/db/schema";
 import { DEFAULT_MARKET } from "@/config/market";
+import { round2 } from "@/lib/money";
 import { getSellableItem } from "@/modules/cart/queries";
 import { isCouponValidationError, validateCoupon } from "@/modules/coupons/discount";
 import { adjustInventoryTx, type DbTransaction } from "@/modules/inventory/mutations";
 import { calculateShippingCost } from "./shipping-cost";
+import { computeOrderTotals } from "./totals";
+import { selectTaxRate, type TaxRateRow } from "./tax";
 import { generateOrderNumber } from "./order-number";
 
 export class EmptyCartError extends Error {
@@ -85,16 +88,19 @@ export type OrderAddressSnapshot = {
   postalCode?: string;
 };
 
-export async function placeOrder(params: {
-  cartOwner: { profileId: string } | { sessionToken: string };
-  profileId: string | null;
-  email: string;
-  phone: string;
-  address: OrderAddressSnapshot;
-  shippingRateId: string;
-  notes?: string;
-}) {
-  return db.transaction(async (tx) => {
+export async function placeOrder(
+  params: {
+    cartOwner: { profileId: string } | { sessionToken: string };
+    profileId: string | null;
+    email: string;
+    phone: string;
+    address: OrderAddressSnapshot;
+    shippingRateId: string;
+    notes?: string;
+  },
+  client: DbTransaction | typeof db = db,
+) {
+  return client.transaction(async (tx) => {
     const cart = await tx.query.carts.findFirst({
       where:
         "profileId" in params.cartOwner
@@ -169,9 +175,12 @@ export async function placeOrder(params: {
       params.address.countryId,
       params.address.stateId,
     );
-    const taxableAmount = round2(subtotal - discountTotal);
-    const taxTotal = round2(taxableAmount * taxRate);
-    const total = round2(taxableAmount + shippingCost + taxTotal);
+    const { taxTotal, total } = computeOrderTotals({
+      subtotal,
+      discountTotal,
+      shippingCost,
+      taxRate,
+    });
 
     const [order] = await tx
       .insert(orders)
@@ -276,17 +285,10 @@ export async function placeOrder(params: {
 }
 
 async function getApplicableTaxRate(tx: DbTransaction, countryId: string, stateId: string | null) {
-  const countryRates = await tx
+  const countryRates: TaxRateRow[] = await tx
     .select()
     .from(taxRates)
     .where(and(eq(taxRates.countryId, countryId), eq(taxRates.isActive, true)));
 
-  const stateMatch = stateId ? countryRates.find((r) => r.stateId === stateId) : undefined;
-  const countryMatch = countryRates.find((r) => r.stateId === null);
-
-  return Number((stateMatch ?? countryMatch)?.rate ?? 0);
-}
-
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
+  return selectTaxRate(countryRates, stateId);
 }

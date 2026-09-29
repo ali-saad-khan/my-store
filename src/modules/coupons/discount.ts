@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { coupons, couponUsages, productCategories } from "@/db/schema";
 import type { DbTransaction } from "@/modules/inventory/mutations";
+import { calculateCouponDiscount, distributeDiscount } from "./discount-math";
 
 export class CouponNotFoundError extends Error {
   constructor() {
@@ -81,10 +82,6 @@ export function isCouponValidationError(error: unknown): error is Error {
   );
 }
 
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
 type CouponIdentifier = { code: string } | { couponId: string };
 
 async function findCoupon(client: DbTransaction | typeof db, identifier: CouponIdentifier) {
@@ -158,28 +155,13 @@ export async function validateCoupon(
   }
 
   const eligibleSubtotal = eligibleLines.reduce((sum, l) => sum + l.lineSubtotal, 0);
-  let discountAmount =
-    coupon.discountType === "percentage"
-      ? eligibleSubtotal * (Number(coupon.discountValue) / 100)
-      : Number(coupon.discountValue);
-  discountAmount = Math.min(discountAmount, eligibleSubtotal);
-  if (coupon.maxDiscountAmount) {
-    discountAmount = Math.min(discountAmount, Number(coupon.maxDiscountAmount));
-  }
-  discountAmount = round2(discountAmount);
-
-  const perLineDiscount = new Map<string, number>();
-  if (discountAmount > 0 && eligibleSubtotal > 0) {
-    let allocated = 0;
-    eligibleLines.forEach((line, index) => {
-      const isLast = index === eligibleLines.length - 1;
-      const amount = isLast
-        ? round2(discountAmount - allocated)
-        : round2(discountAmount * (line.lineSubtotal / eligibleSubtotal));
-      allocated = round2(allocated + amount);
-      perLineDiscount.set(line.key, amount);
-    });
-  }
+  const discountAmount = calculateCouponDiscount({
+    discountType: coupon.discountType,
+    discountValue: Number(coupon.discountValue),
+    maxDiscountAmount: coupon.maxDiscountAmount ? Number(coupon.maxDiscountAmount) : null,
+    eligibleSubtotal,
+  });
+  const perLineDiscount = distributeDiscount(discountAmount, eligibleLines);
 
   return { coupon, discountAmount, perLineDiscount };
 }

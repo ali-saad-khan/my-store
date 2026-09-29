@@ -385,6 +385,53 @@ Phases 4 and 7):
   don't over-normalize without a clear reason) since analytics properties vary per event
   type by design.
 
+## Scope note: Phase 14 (Testing) design decisions
+
+- **One shared dev Supabase Postgres DB, no separate test database.** There's no Docker/
+  Supabase-CLI local stack for this project, so integration tests run against the same
+  database used for manual phase-by-phase testing and seeded reference data. The only thing
+  that makes this safe is `tests/helpers/db.ts`'s `withRollback()`: every integration test
+  runs inside a real `db.transaction()` and the wrapper always throws after the test body
+  runs, forcing a ROLLBACK — verified live by running the full integration suite, then
+  querying `products`/`coupons`/`categories`/`orders`/`roles` for anything matching the
+  tests' naming convention (`Test Product %`, `TEST%`, etc.) and confirming zero rows.
+  **Any new integration test must go through `withRollback`, never call `db.transaction`
+  directly.**
+- **This only works for mutation functions that accept an optional trailing transaction
+  client.** `placeOrder`, `transitionOrderStatus`, `cancelOrderAsCustomer`, and
+  `getUserRoles` were all changed this phase to accept `client: DbTransaction | typeof db =
+  db` (mirroring the pattern `adjustInventoryTx`/`validateCoupon` already used) specifically
+  so tests can pass in the rollback transaction and have Drizzle open a SAVEPOINT nested
+  inside it, rather than the function reaching for the global `db` singleton and opening its
+  own independent, really-committing transaction. **A mutation function written without
+  this optional-client parameter cannot be safely integration-tested with `withRollback`** —
+  add the parameter (default `db`, backward compatible) before writing a test against it.
+- **Cart mutations (`addToCart`, `updateCartItemQuantity`, `removeCartItem`) are NOT
+  integration-tested directly** — they read `next/headers`'s `cookies()` and call Supabase
+  Auth's `getCurrentUser()` internally, both of which require a real Next.js request/response
+  context that a plain Vitest test doesn't have. Cart behavior is covered indirectly:
+  `placeOrder`'s integration tests pre-seed a cart + cart_items row directly (bypassing the
+  cookie-reading path) and assert the cart is correctly read, priced, and cleared.
+- **Real Supabase Auth (signup, login, session issuance) is not covered by automated
+  tests.** It's an external service, not part of our Postgres transaction, so a real signup
+  can't be rolled back — and per Phase 2's own disclosed limitation, there's no real inbox to
+  confirm one with anyway. The integration suite instead covers the authorization layer
+  (`getUserRoles`, which `requireRole`/`requireAdmin` gate on) using an existing real profile
+  row (read-only — tests never insert a fake `profiles` row, since `profiles.id` has a real
+  Postgres FK to `auth.users` that can't be fabricated). The E2E test logs in with an
+  existing disclosed test account rather than signing one up.
+- **E2E tests intentionally create real data and are not rolled back.**
+  `e2e/critical-path.spec.ts` places a real Cash-on-Delivery order against the live dev DB
+  while covering MasterPlan.txt section 28's critical flow verbatim (browse → add to cart →
+  checkout → COD order → admin sees order → admin changes status → customer sees the
+  updated status) — user-approved scope decision for this phase, same as every phase's
+  manual browser testing already did.
+- **`server-only` is aliased to a no-op in both Vitest configs.** The real package throws on
+  import specifically to catch a Client Component accidentally importing server code —
+  a check Next's own RSC bundler performs. Outside that bundler (i.e. under Vitest), the
+  check doesn't apply and the real package's unconditional throw would break every test that
+  transitively imports a module marked `"server-only"` (which is most of `src/modules/*`).
+
 ## Schema overview
 
 | Domain           | Tables                                                                                                                                                             |

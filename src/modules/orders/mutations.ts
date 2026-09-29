@@ -9,7 +9,7 @@ import {
   paymentTransactions,
   payments,
 } from "@/db/schema";
-import { adjustInventoryTx } from "@/modules/inventory/mutations";
+import { adjustInventoryTx, type DbTransaction } from "@/modules/inventory/mutations";
 import { canTransition, CUSTOMER_CANCELLABLE_STATUSES, type OrderStatus } from "./status";
 
 export class OrderNotFoundError extends Error {
@@ -40,13 +40,16 @@ export class OrderNotCancellableError extends Error {
  * delivery/refund, and always writing a status-history row
  * (MasterPlan.txt section 12 — every transition is audited).
  */
-export async function transitionOrderStatus(input: {
-  orderId: string;
-  toStatus: OrderStatus;
-  note?: string;
-  actorId: string | null;
-}) {
-  return db.transaction(async (tx) => {
+export async function transitionOrderStatus(
+  input: {
+    orderId: string;
+    toStatus: OrderStatus;
+    note?: string;
+    actorId: string | null;
+  },
+  client: DbTransaction | typeof db = db,
+) {
+  return client.transaction(async (tx) => {
     const [order] = await tx
       .select()
       .from(orders)
@@ -147,19 +150,25 @@ async function settlePayment(tx: Tx, payment: typeof payments.$inferSelect, toSt
 }
 
 /** Self-service cancellation — a tighter window than what admins can do (`transitionOrderStatus` directly). */
-export async function cancelOrderAsCustomer(input: {
-  orderId: string;
-  currentStatus: OrderStatus;
-  actorId: string | null;
-}) {
+export async function cancelOrderAsCustomer(
+  input: {
+    orderId: string;
+    currentStatus: OrderStatus;
+    actorId: string | null;
+  },
+  client: DbTransaction | typeof db = db,
+) {
   if (!CUSTOMER_CANCELLABLE_STATUSES.includes(input.currentStatus)) {
     throw new OrderNotCancellableError();
   }
 
-  return transitionOrderStatus({
-    orderId: input.orderId,
-    toStatus: "cancelled",
-    note: "Cancelled by customer.",
-    actorId: input.actorId,
-  });
+  return transitionOrderStatus(
+    {
+      orderId: input.orderId,
+      toStatus: "cancelled",
+      note: "Cancelled by customer.",
+      actorId: input.actorId,
+    },
+    client,
+  );
 }

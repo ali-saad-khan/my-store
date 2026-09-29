@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { inventory, inventoryMovements, inventoryMovementTypeEnum } from "@/db/schema";
+import { computeNextQuantity } from "./calculations";
 
 export type InventoryMovementType = (typeof inventoryMovementTypeEnum.enumValues)[number];
 
@@ -56,8 +57,8 @@ export async function adjustInventoryTx(tx: DbTransaction, input: AdjustInventor
 
   if (!row) throw new InventoryNotFoundError();
 
-  const nextQuantityOnHand = row.quantityOnHand + input.quantity;
-  if (nextQuantityOnHand < 0) throw new InsufficientStockError();
+  const nextQuantityOnHand = computeNextQuantity(row.quantityOnHand, input.quantity);
+  if (nextQuantityOnHand === null) throw new InsufficientStockError();
 
   const [updated] = await tx
     .update(inventory)

@@ -22,8 +22,11 @@ export async function getCurrentProfile() {
   return profile ?? null;
 }
 
-export async function getUserRoles(profileId: string): Promise<string[]> {
-  const rows = await db
+export async function getUserRoles(
+  profileId: string,
+  client: Pick<typeof db, "select"> = db,
+): Promise<string[]> {
+  const rows = await client
     .select({ name: roles.name })
     .from(userRoles)
     .innerJoin(roles, eq(roles.id, userRoles.roleId))

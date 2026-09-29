@@ -4,7 +4,7 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 13 — Analytics. Categories, products, variants, and a storefront (listing,
+**Status:** Phase 14 — Testing. Categories, products, variants, and a storefront (listing,
 search/filter/sort/pagination, product detail pages) are live. Stock is tracked per
 product/variant with an append-only movement ledger; admins can view stock levels, filter
 for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`. Guests
@@ -44,9 +44,15 @@ exists for this project) and switches to Resend automatically once `RESEND_API_K
 of provider. Behavioral analytics events (product views/searches, cart/checkout funnel,
 orders, wishlist adds) are tracked through a self-hosted abstraction
 (`src/modules/analytics`) into an `analytics_events` table, with admins reviewing event
-counts and the most-viewed products over the last 30 days at `/admin/analytics`. A
-shipping-zone admin UI, settings, and audit logs are deliberately deferred (see
-DATABASE.md). No online payment gateway yet.
+counts and the most-viewed products over the last 30 days at `/admin/analytics`. Business
+logic that used to be inlined inside DB-touching functions (order totals, tax-rate
+selection, coupon discount math, inventory quantity math) was extracted into pure,
+unit-tested functions; `pnpm test` runs 36 unit tests, `pnpm test:integration` runs 18
+integration tests against the real dev DB inside transactions that always roll back (zero
+trace left), and `pnpm test:e2e` runs a Playwright end-to-end test of the full critical path
+(browse → cart → COD checkout → admin updates status → customer sees it) — see the Testing
+section below and DATABASE.md's Phase 14 scope note. A shipping-zone admin UI, settings, and
+audit logs are deliberately deferred (see DATABASE.md). No online payment gateway yet.
 
 ## Tech stack
 
@@ -134,7 +140,39 @@ Product/category domain logic lives in `src/modules/products/` and
 
 ## Testing
 
-Not yet implemented — see Phase 14 in `MasterPlan.txt`.
+Three layers, per MasterPlan.txt section 28:
+
+```bash
+pnpm test              # unit tests (Vitest) — pure functions, no DB, fast
+pnpm test:watch        # unit tests in watch mode
+pnpm test:integration  # integration tests (Vitest) — real dev DB, always rolled back
+pnpm test:e2e          # E2E tests (Playwright) — real browser, real dev server
+```
+
+- **Unit tests** (`src/**/*.test.ts`, colocated with the code they test) cover pricing,
+  discounts/coupon rules, shipping-cost calculation, tax-rate selection, order totals, and
+  inventory quantity math — all extracted into pure functions specifically so they're
+  testable without a database.
+- **Integration tests** (`src/**/*.integration.test.ts`) exercise real mutation functions
+  (`placeOrder`, `transitionOrderStatus`, `adjustInventoryTx`, `validateCoupon`,
+  `getUserRoles`) against the actual dev Supabase Postgres database — there's no separate
+  test database. Every test runs inside a transaction that's always rolled back
+  (`tests/helpers/db.ts`'s `withRollback`), so nothing is ever left behind; verified live by
+  querying the DB after a full run and confirming zero leftover rows. This only works for
+  functions that accept an optional trailing transaction client (`placeOrder`,
+  `transitionOrderStatus`, `cancelOrderAsCustomer`, `getUserRoles` all do) — see
+  DATABASE.md's Phase 14 scope note before adding a new integration test.
+- **E2E tests** (`e2e/*.spec.ts`) drive a real Chromium browser against a real running dev
+  server and this same dev database — unlike integration tests, these **do create real
+  data** (a real order, in `critical-path.spec.ts`), the same as manual phase-by-phase
+  testing throughout this project. `pnpm test:e2e` starts `pnpm dev` for you if it isn't
+  already running.
+
+Real Supabase Auth signup/login isn't covered by automated tests (no real inbox to confirm
+a new signup with, and Auth is an external service that can't be rolled back with the rest
+of a transaction) — the integration suite instead covers the authorization layer
+(`getUserRoles`) that `requireRole`/`requireAdmin` gate on, and E2E logs in with an existing
+disclosed test account rather than signing one up.
 
 ## Scripts
 
@@ -147,6 +185,10 @@ Not yet implemented — see Phase 14 in `MasterPlan.txt`.
 | `pnpm typecheck`     | Run the TypeScript compiler       |
 | `pnpm format`        | Format the codebase with Prettier |
 | `pnpm format:check`  | Check formatting without writing  |
+| `pnpm test`          | Run unit tests                    |
+| `pnpm test:watch`    | Run unit tests in watch mode      |
+| `pnpm test:integration` | Run integration tests (real dev DB, rolled back) |
+| `pnpm test:e2e`      | Run Playwright E2E tests           |
 | `pnpm db:generate`   | Generate a Drizzle migration      |
 | `pnpm db:migrate`    | Apply migrations                  |
 | `pnpm db:seed`       | Reset and load seed data          |
@@ -166,6 +208,9 @@ src/
 ├── types/         # Shared TypeScript types
 ├── config/        # App configuration (market defaults, feature flags, ...)
 └── validations/   # Shared Zod schemas
+
+tests/             # Integration-test helpers (rollback wrapper, DB fixtures)
+e2e/               # Playwright end-to-end specs
 ```
 
 Each module under `src/modules/` owns its own domain logic; UI components should not

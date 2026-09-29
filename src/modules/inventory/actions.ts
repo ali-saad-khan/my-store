@@ -5,6 +5,7 @@ import { requireAdmin } from "@/modules/auth/session";
 import { sendLowStockAlertEmail } from "@/modules/notifications/emails";
 import { getSettingValue } from "@/modules/settings/queries";
 import { adjustInventorySchema } from "@/validations/inventory";
+import { isLowStock } from "./calculations";
 import { getInventoryById } from "./queries";
 import { adjustInventory, InsufficientStockError, InventoryNotFoundError } from "./mutations";
 
@@ -45,7 +46,7 @@ export async function adjustInventoryAction(
   }
 
   const quantityAvailable = updated.quantityOnHand - updated.quantityReserved;
-  if (quantityAvailable <= updated.reorderPoint) {
+  if (isLowStock(updated.quantityOnHand, updated.quantityReserved, updated.reorderPoint)) {
     const alertEmail = await getSettingValue<string>("support_email");
     if (alertEmail) {
       const withDetails = await getInventoryById(updated.id);
