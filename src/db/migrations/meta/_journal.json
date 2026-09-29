@@ -57,6 +57,13 @@
       "when": 1790668463823,
       "tag": "0007_dazzling_master_mold",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790676000000,
+      "tag": "0008_product_images_storage",
+      "breakpoints": true
     }
   ]
 }

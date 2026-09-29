@@ -13,6 +13,7 @@ import {
   softDeleteProduct,
   updateProductAdmin,
 } from "./admin-mutations";
+import { InvalidImageFileError, uploadProductImage } from "./storage";
 
 export type ProductActionState = { error?: string } | undefined;
 
@@ -75,6 +76,12 @@ function firstZodError(error: { flatten: () => { fieldErrors: Record<string, str
   return Object.values(error.flatten().fieldErrors).flat()[0];
 }
 
+/** Uploads any admin-selected image files to Supabase Storage, returning their public URLs. */
+async function uploadImageFiles(formData: FormData): Promise<string[]> {
+  const files = formData.getAll("imageFile").filter((f): f is File => f instanceof File && f.size > 0);
+  return Promise.all(files.map(uploadProductImage));
+}
+
 export async function createProductAction(
   _prevState: ProductActionState,
   formData: FormData,
@@ -83,6 +90,15 @@ export async function createProductAction(
 
   const parsedBase = parseProductBase(formData);
   if (!parsedBase.success) return { error: firstZodError(parsedBase.error) ?? "Invalid input." };
+
+  let uploadedImageUrls: string[];
+  try {
+    uploadedImageUrls = await uploadImageFiles(formData);
+  } catch (error) {
+    if (error instanceof InvalidImageFileError) return { error: error.message };
+    throw error;
+  }
+  parsedBase.data.imageUrls = [...parsedBase.data.imageUrls, ...uploadedImageUrls];
 
   const rawVariants = parsedBase.data.hasVariants ? await parseVariantRows(formData) : [];
   const parsedVariants = [];
@@ -117,6 +133,15 @@ export async function updateProductAction(
 
   const parsedBase = parseProductBase(formData);
   if (!parsedBase.success) return { error: firstZodError(parsedBase.error) ?? "Invalid input." };
+
+  let uploadedImageUrls: string[];
+  try {
+    uploadedImageUrls = await uploadImageFiles(formData);
+  } catch (error) {
+    if (error instanceof InvalidImageFileError) return { error: error.message };
+    throw error;
+  }
+  parsedBase.data.imageUrls = [...parsedBase.data.imageUrls, ...uploadedImageUrls];
 
   // Always parse variant rows here, regardless of the submitted `hasVariants`
   // flag: updateProductAdmin authoritatively re-derives hasVariants from the

@@ -218,8 +218,22 @@ export function ProductForm({
       </section>
 
       <section className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="imageFile">Upload images</Label>
+          <input
+            id="imageFile"
+            name="imageFile"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            multiple
+            className="border-border bg-background w-full rounded-lg border px-2.5 py-1.5 text-sm"
+          />
+          <p className="text-muted-foreground text-xs">
+            JPEG, PNG, WebP, or AVIF, up to 5MB each. Uploaded to Supabase Storage.
+          </p>
+        </div>
         <div className="flex items-center justify-between">
-          <h2 className="font-medium">Images (URLs)</h2>
+          <h2 className="font-medium">Or link existing image URLs</h2>
           <Button
             type="button"
             size="sm"

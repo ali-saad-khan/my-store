@@ -14,15 +14,30 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 
+// Derived from the env var (not hard-coded) so this works against whichever Supabase
+// project is active — dev or production — without a code change.
+const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+  : undefined;
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        // Seed/placeholder product images until Supabase Storage is wired up.
+        // Seed/placeholder product images.
         protocol: "https",
         hostname: "placehold.co",
         pathname: "/**",
       },
+      ...(supabaseHostname
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: supabaseHostname,
+              pathname: "/storage/v1/object/public/**",
+            },
+          ]
+        : []),
     ],
   },
   async headers() {
