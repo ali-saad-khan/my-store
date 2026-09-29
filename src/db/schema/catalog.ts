@@ -1,6 +1,7 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
+  index,
   integer,
   numeric,
   pgTable,
@@ -66,38 +67,52 @@ export const productCategories = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: "cascade" }),
   },
-  (table) => [primaryKey({ columns: [table.productId, table.categoryId] })],
+  (table) => [
+    primaryKey({ columns: [table.productId, table.categoryId] }),
+    // The composite PK is (productId, categoryId) — efficient for "categories of a
+    // product" but not for "products in a category" (every category page), since
+    // categoryId isn't the leading column there. This covers that direction.
+    index("product_categories_category_id_idx").on(table.categoryId),
+  ],
 );
 
-export const productImages = pgTable("product_images", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  productId: uuid("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "cascade" }),
-  variantId: uuid("variant_id").references((): AnyPgColumn => productVariants.id, {
-    onDelete: "cascade",
-  }),
-  url: text("url").notNull(),
-  altText: text("alt_text"),
-  sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const productImages = pgTable(
+  "product_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id").references((): AnyPgColumn => productVariants.id, {
+      onDelete: "cascade",
+    }),
+    url: text("url").notNull(),
+    altText: text("alt_text"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("product_images_product_id_idx").on(table.productId)],
+);
 
-export const productVariants = pgTable("product_variants", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  productId: uuid("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "cascade" }),
-  sku: text("sku").notNull().unique(),
-  price: numeric("price", { precision: 12, scale: 2 }).notNull(),
-  compareAtPrice: numeric("compare_at_price", { precision: 12, scale: 2 }),
-  costPrice: numeric("cost_price", { precision: 12, scale: 2 }),
-  weight: numeric("weight", { precision: 10, scale: 3 }),
-  status: productStatusEnum("status").notNull().default("active"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+export const productVariants = pgTable(
+  "product_variants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    sku: text("sku").notNull().unique(),
+    price: numeric("price", { precision: 12, scale: 2 }).notNull(),
+    compareAtPrice: numeric("compare_at_price", { precision: 12, scale: 2 }),
+    costPrice: numeric("cost_price", { precision: 12, scale: 2 }),
+    weight: numeric("weight", { precision: 10, scale: 3 }),
+    status: productStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [index("product_variants_product_id_idx").on(table.productId)],
+);
 
 /** e.g. "Size", "Color", "Material" */
 export const productAttributes = pgTable("product_attributes", {

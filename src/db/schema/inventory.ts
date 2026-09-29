@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { check, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { inventoryMovementTypeEnum } from "./enums";
 import { profiles } from "./identity";
 import { productVariants, products } from "./catalog";
@@ -37,16 +46,20 @@ export const inventory = pgTable(
 );
 
 /** Append-only ledger — never decrement `inventory.quantity_on_hand` without a row here. */
-export const inventoryMovements = pgTable("inventory_movements", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  inventoryId: uuid("inventory_id")
-    .notNull()
-    .references(() => inventory.id, { onDelete: "cascade" }),
-  type: inventoryMovementTypeEnum("type").notNull(),
-  quantity: integer("quantity").notNull(), // signed: positive increases stock, negative decreases
-  referenceType: text("reference_type"), // e.g. "order"
-  referenceId: uuid("reference_id"),
-  note: text("note"),
-  createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const inventoryMovements = pgTable(
+  "inventory_movements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    inventoryId: uuid("inventory_id")
+      .notNull()
+      .references(() => inventory.id, { onDelete: "cascade" }),
+    type: inventoryMovementTypeEnum("type").notNull(),
+    quantity: integer("quantity").notNull(), // signed: positive increases stock, negative decreases
+    referenceType: text("reference_type"), // e.g. "order"
+    referenceId: uuid("reference_id"),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("inventory_movements_inventory_id_idx").on(table.inventoryId)],
+);

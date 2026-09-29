@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { check, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { reviewStatusEnum } from "./enums";
 import { profiles } from "./identity";
 import { products } from "./catalog";
@@ -32,5 +41,8 @@ export const reviews = pgTable(
     uniqueIndex("reviews_profile_product_unique")
       .on(table.profileId, table.productId)
       .where(sql`${table.deletedAt} IS NULL`),
+    // productId is the second column above, so a plain lookup by product (every
+    // product page's review list/summary) needs its own index.
+    index("reviews_product_id_idx").on(table.productId),
   ],
 );

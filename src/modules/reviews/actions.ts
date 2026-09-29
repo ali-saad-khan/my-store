@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getCurrentUser, requireAdmin } from "@/modules/auth/session";
 import { moderateReviewSchema, reviewInputSchema } from "@/validations/review";
 import { deleteReviewAsCustomer, moderateReview, ReviewNotFoundError, upsertReview } from "./mutations";
@@ -13,6 +14,13 @@ export async function submitReviewAction(
 ): Promise<ReviewActionState> {
   const user = await getCurrentUser();
   if (!user) return { error: "Sign in to leave a review." };
+
+  const { allowed } = await checkRateLimit({
+    key: `review_submit:${user.id}`,
+    limit: 20,
+    windowSeconds: 60 * 60,
+  });
+  if (!allowed) return { error: "Too many reviews submitted. Try again later." };
 
   const parsed = reviewInputSchema.safeParse({
     productId: formData.get("productId"),

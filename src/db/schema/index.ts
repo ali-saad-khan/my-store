@@ -16,4 +16,5 @@ export * from "./notifications";
 export * from "./settings";
 export * from "./audit";
 export * from "./analytics";
+export * from "./rate-limit";
 export * from "./relations";

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  index,
   jsonb,
   numeric,
   pgTable,
@@ -13,35 +14,43 @@ import { paymentStatusEnum } from "./enums";
 import { orders } from "./orders";
 import { paymentMethods } from "./payment-methods";
 
-export const payments = pgTable("payments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  orderId: uuid("order_id")
-    .notNull()
-    .references(() => orders.id, { onDelete: "cascade" }),
-  paymentMethodId: uuid("payment_method_id")
-    .notNull()
-    .references(() => paymentMethods.id, { onDelete: "restrict" }),
-  status: paymentStatusEnum("status").notNull().default("pending"),
-  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-  currencyCode: text("currency_code").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    paymentMethodId: uuid("payment_method_id")
+      .notNull()
+      .references(() => paymentMethods.id, { onDelete: "restrict" }),
+    status: paymentStatusEnum("status").notNull().default("pending"),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    currencyCode: text("currency_code").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("payments_order_id_idx").on(table.orderId)],
+);
 
 /** Raw provider interaction log (authorize/capture/refund/...) for one payment. */
-export const paymentTransactions = pgTable("payment_transactions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  paymentId: uuid("payment_id")
-    .notNull()
-    .references(() => payments.id, { onDelete: "cascade" }),
-  provider: text("provider").notNull(), // "cod", "manual_gateway", "stripe", ...
-  providerTransactionId: text("provider_transaction_id"),
-  type: text("type").notNull(), // "authorize" | "capture" | "refund" | ...
-  status: text("status").notNull(),
-  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-  rawResponse: jsonb("raw_response").$type<Record<string, unknown>>(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const paymentTransactions = pgTable(
+  "payment_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    paymentId: uuid("payment_id")
+      .notNull()
+      .references(() => payments.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(), // "cod", "manual_gateway", "stripe", ...
+    providerTransactionId: text("provider_transaction_id"),
+    type: text("type").notNull(), // "authorize" | "capture" | "refund" | ...
+    status: text("status").notNull(),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    rawResponse: jsonb("raw_response").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("payment_transactions_payment_id_idx").on(table.paymentId)],
+);
 
 /**
  * Incoming webhook log. Idempotency is enforced via the (provider, provider_event_id)

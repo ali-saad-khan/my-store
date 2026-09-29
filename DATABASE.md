@@ -432,6 +432,53 @@ Phases 4 and 7):
   check doesn't apply and the real package's unconditional throw would break every test that
   transitively imports a module marked `"server-only"` (which is most of `src/modules/*`).
 
+## Scope note: Phase 15 (Production hardening) design decisions
+
+- **Indexes were added for every foreign-key column actually queried by that column**, since
+  Postgres does not auto-index foreign keys — only primary keys and unique constraints get
+  an automatic index. Added: `addresses.profile_id`, `payments.order_id`,
+  `payment_transactions.payment_id`, `orders.profile_id`, `order_items.order_id`,
+  `order_addresses.order_id`, `order_status_history.order_id`,
+  `product_categories.category_id` (the composite PK's non-leading column, which needs its
+  own index to be usable on its own), `product_images.product_id`,
+  `product_variants.product_id`, `reviews.product_id` (productId is the second column of an
+  existing partial unique index, which can't serve lookups filtered by productId alone), and
+  `inventory_movements.inventory_id`. Purely additive migrations
+  (`0006_spicy_hammerhead.sql`) — no existing query behavior changed, only query plans for
+  these lookup patterns.
+- **Rate limiting is DB-backed (`rate_limit_attempts` table + `src/lib/rate-limit.ts`), not
+  in-memory.** Vercel serverless functions don't share process memory across invocations —
+  an in-memory counter would reset (or simply not be shared) on every cold start/different
+  instance, silently doing nothing in production. `checkRateLimit({key, limit,
+  windowSeconds})` deletes expired attempts for that key, counts what's left, and inserts a
+  new attempt row only if still under the limit — a fixed-window counter, not sliding-window
+  or token-bucket (simple and sufficient for the traffic this app expects; revisit only if
+  it proves too coarse). Applied to `applyCouponAction` (10 attempts/5 min per IP — coupon
+  codes are guessable and this is a brute-force surface), `placeOrderAction` (5 orders/10
+  min per IP), and `submitReviewAction` (20 reviews/hour per signed-in user). Verified live:
+  submitting an invalid coupon code through the running app 10 times succeeds normally
+  (`"That coupon code doesn't exist."` / `"Enter a coupon code."`), and the 11th within the
+  same 5-minute window returns `"Too many attempts. Try again in a few minutes."` instead —
+  confirmed by also querying `rate_limit_attempts` directly and seeing exactly 10 rows for
+  that key (the 11th, blocked, request correctly does not insert an 11th row).
+- **Security headers were added (`next.config.ts`), but Content-Security-Policy was
+  deliberately NOT added this phase.** `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Permissions-Policy`, and `Strict-Transport-Security` are conservative,
+  well-understood headers with no risk of breaking the app. A correct CSP requires
+  enumerating every actual script/style/image/connect source this app uses and testing the
+  built app against it — shipping one blind risks silently breaking functionality, which
+  section 35's "never claim something works without testing it" rules out doing carelessly.
+  Disclosed gap, not an oversight — add a CSP as its own follow-up piece of work, tested
+  against a real production build.
+- **Error boundaries** (`src/app/not-found.tsx`, `src/app/error.tsx`,
+  `src/app/global-error.tsx`) were added as plain Next.js special files, not custom
+  plumbing. `global-error.tsx` renders its own `<html>/<body>` (can't reuse the root
+  layout's, since a broken root layout is the failure case it exists to catch).
+- **Shipping-zone admin UI, a `settings` admin UI, `audit_logs` writes, and an online
+  payment gateway remain deferred**, same as prior phases — nothing in Phase 15 changed
+  that scope; listed here again only because "production hardening" is exactly the phase
+  where it'd be easy to assume these got swept in.
+
 ## Schema overview
 
 | Domain           | Tables                                                                                                                                                             |

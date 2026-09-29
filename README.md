@@ -4,7 +4,7 @@ A production ecommerce platform for the Pakistan market, architected to extend t
 international markets without a rewrite. See [`MasterPlan.txt`](./MasterPlan.txt) for the
 full product/technical specification and phase plan.
 
-**Status:** Phase 14 — Testing. Categories, products, variants, and a storefront (listing,
+**Status:** Phase 15 — Production hardening (final phase). Categories, products, variants, and a storefront (listing,
 search/filter/sort/pagination, product detail pages) are live. Stock is tracked per
 product/variant with an append-only movement ledger; admins can view stock levels, filter
 for low stock, and apply transaction-safe manual adjustments at `/admin/inventory`. Guests
@@ -51,8 +51,18 @@ unit-tested functions; `pnpm test` runs 36 unit tests, `pnpm test:integration` r
 integration tests against the real dev DB inside transactions that always roll back (zero
 trace left), and `pnpm test:e2e` runs a Playwright end-to-end test of the full critical path
 (browse → cart → COD checkout → admin updates status → customer sees it) — see the Testing
-section below and DATABASE.md's Phase 14 scope note. A shipping-zone admin UI, settings, and
-audit logs are deliberately deferred (see DATABASE.md). No online payment gateway yet.
+section below and DATABASE.md's Phase 14 scope note. Production hardening is now in place:
+every foreign-key column that's actually queried has an explicit index (Postgres doesn't
+auto-index them), coupon application/order placement/review submission are all protected by
+DB-backed rate limiting (verified live against the running app, not just in tests — see
+DATABASE.md's Phase 15 scope note), `next.config.ts` sets conservative security headers, and
+`not-found.tsx`/`error.tsx`/`global-error.tsx` give the app real error boundaries instead of
+Next's defaults. A shipping-zone admin UI, settings, and audit logs are deliberately
+deferred, and there's no online payment gateway yet or Content-Security-Policy (see
+DATABASE.md's scope notes for why). See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how it's
+all put together, [`ENVIRONMENT.md`](./ENVIRONMENT.md) for the full environment variable
+reference, and [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the Vercel/Supabase/Cloudflare
+deployment procedure and pre/post-deploy checklists.
 
 ## Tech stack
 
@@ -218,5 +228,8 @@ contain business logic directly.
 
 ## Production deployment
 
-Not yet implemented — see Phase 15 in `MasterPlan.txt`. Target platform is Vercel, with
-Supabase PostgreSQL and Cloudflare for DNS/security.
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the full Vercel + Supabase + Cloudflare
+deployment procedure, including a pre-deploy checklist (typecheck/lint/tests/build) and a
+post-deploy manual verification checklist. Not yet actually deployed for this project — the
+document has not been exercised against a real Vercel project yet, so verify each step
+rather than assuming it's correct.

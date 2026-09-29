@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getCurrentUser, requireAdmin } from "@/modules/auth/session";
 import { getActiveCart, resolveCartOwner } from "@/modules/cart/queries";
 import { applyCouponSchema, couponInputSchema } from "@/validations/coupon";
@@ -32,6 +33,15 @@ export async function applyCouponAction(
 ): Promise<CouponActionState> {
   const owner = await resolveCartOwner();
   if (!owner) return { error: "Your cart is empty." };
+
+  // Coupon codes are guessable — cap attempts per IP so this can't be brute-forced.
+  const ip = await getClientIp();
+  const { allowed } = await checkRateLimit({
+    key: `coupon_apply:${ip}`,
+    limit: 10,
+    windowSeconds: 5 * 60,
+  });
+  if (!allowed) return { error: "Too many attempts. Try again in a few minutes." };
 
   const parsed = applyCouponSchema.safeParse({ code: formData.get("code") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getAddressForProfile } from "@/modules/addresses/queries";
 import { createAddressForProfile, resolveCityGeography } from "@/modules/addresses/mutations";
 import { getCurrentUser } from "@/modules/auth/session";
@@ -28,6 +29,14 @@ export async function placeOrderAction(
 ): Promise<PlaceOrderActionState> {
   const owner = await resolveCartOwner();
   if (!owner) return { error: "Your cart is empty." };
+
+  const ip = await getClientIp();
+  const { allowed } = await checkRateLimit({
+    key: `place_order:${ip}`,
+    limit: 5,
+    windowSeconds: 10 * 60,
+  });
+  if (!allowed) return { error: "Too many orders placed. Please wait a few minutes and try again." };
 
   const parsed = placeOrderSchema.safeParse({
     email: formData.get("email"),
