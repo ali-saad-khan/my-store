@@ -9,6 +9,7 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/customers", label: "Customers" },
   { href: "/admin/reviews", label: "Reviews" },
+  { href: "/admin/analytics", label: "Analytics" },
 ];
 
 export function AdminNav() {

@@ -345,6 +345,46 @@ Phases 4 and 7):
   for both guest and signed-in checkouts already), not `profiles.email`, since that's the
   address the customer actually confirmed at checkout time.
 
+## Scope note: Phase 13 (Analytics) design decisions
+
+- **Self-hosted event store, no third-party analytics vendor** (no PostHog/Segment/GA4
+  credentials exist for this project — same reasoning as Phase 12's email provider). A new
+  `analytics_events` table (migration `0005_graceful_bloodaxe.sql`: `event_name`, nullable
+  `profile_id`, `properties` jsonb, indexed on `(event_name, created_at)`) is the only sink
+  today. `src/modules/analytics/track.ts`'s `track()` is the one place any event gets
+  written, behind an `AnalyticsProvider` interface — a future PostHog/Segment/GA4 provider
+  would plug in there the same way Resend plugs in behind email's `EmailProvider`, but isn't
+  written until there's a real account to test it against (MasterPlan.txt section 35).
+- **No anonymous visitor/session ID.** Events are attributed to a `profile_id` when
+  signed in and otherwise fully anonymous — no new tracking cookie was introduced to
+  correlate a guest's events across a session. Contextual identifiers (product ID, search
+  query, order ID) live in each event's `properties` instead. Revisit if guest funnel
+  analysis (e.g. anonymous cart abandonment) becomes a real need.
+- **`track()` calls live in the page/action layer, never inside `mutations.ts` files** —
+  MasterPlan.txt section 25's "do not place analytics code throughout business logic
+  unnecessarily," applied literally: `product_viewed` is in the product page component,
+  `order_created`/`payment_started` are in `checkout/actions.ts`, `order_completed` is in
+  `orders/actions.ts` (fires on the `delivered` transition specifically, not on every
+  transition), never inside `checkout/mutations.ts`'s `placeOrder()` transaction itself.
+- **`track()` never throws**, identically to `sendTransactionalEmail()` — a dropped
+  analytics event must never break checkout, cart, wishlist, or any other business flow.
+- **Known, disclosed imprecision: `product_viewed` can double-count within one page visit.**
+  It's tracked on every Server Component render of the product page, and a Server Action
+  called from that page (e.g. "Add to cart") triggers `revalidatePath("/", "layout")`, which
+  re-renders the current route including the product page itself — logging a second
+  `product_viewed` for what a user would call one visit. Confirmed live: viewing then adding
+  to cart from the same product page produced two `product_viewed` rows a fraction of a
+  second apart. Not fixed in this phase (would need client-side dedup/a beacon-based
+  approach); the "Most viewed products" admin view is a relative ranking signal, not an exact
+  visit count — good enough for this pass, called out here so it isn't mistaken for a bug
+  later.
+- **The "Most viewed products" admin query extracts `properties->>'productId'` from the
+  jsonb column directly in SQL** (grouped/ordered there, then joined back to `products` by
+  ID for a display name) rather than normalizing product-related events into their own
+  typed columns — the event table is intentionally schema-light (MasterPlan.txt section 5:
+  don't over-normalize without a clear reason) since analytics properties vary per event
+  type by design.
+
 ## Schema overview
 
 | Domain           | Tables                                                                                                                                                             |

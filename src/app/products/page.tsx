@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Pagination } from "@/components/pagination";
 import { absoluteUrl, buildOpenGraph } from "@/lib/seo";
+import { track } from "@/modules/analytics/track";
+import { getCurrentUser } from "@/modules/auth/session";
 import { listProducts } from "@/modules/products/queries";
 import { ProductFilters } from "@/modules/products/components/product-filters";
 import { ProductGrid } from "@/modules/products/components/product-grid";
@@ -21,6 +23,15 @@ export default async function ProductsPage(props: PageProps<"/products">) {
   const search = productListSearchSchema.parse(rawSearch);
 
   const result = await listProducts(search);
+
+  if (search.q) {
+    const user = await getCurrentUser();
+    await track(
+      "product_searched",
+      { query: search.q, resultCount: result.total },
+      { profileId: user?.id ?? null },
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">

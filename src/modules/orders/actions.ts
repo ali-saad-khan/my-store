@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/modules/auth/session";
+import { track } from "@/modules/analytics/track";
 import { sendOrderStatusEmail } from "@/modules/notifications/emails";
 import { cancelOrderSchema, updateOrderStatusSchema } from "@/validations/orders";
 import { getOrderByNumberForViewer, getOrderForAdmin } from "./queries";
@@ -95,6 +96,14 @@ export async function updateOrderStatusAction(
       status: parsed.data.toStatus,
       note: parsed.data.note,
     });
+  }
+
+  if (parsed.data.toStatus === "delivered") {
+    await track(
+      "order_completed",
+      { orderId: order.id, orderNumber: order.orderNumber, total: order.total },
+      { profileId: order.profileId },
+    );
   }
 
   revalidatePath(`/admin/orders/${parsed.data.orderNumber}`);

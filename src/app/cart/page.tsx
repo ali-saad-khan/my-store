@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/currency";
+import { getCurrentUser } from "@/modules/auth/session";
+import { track } from "@/modules/analytics/track";
 import { toCartView } from "@/modules/cart/cart-utils";
 import { CartItemRow } from "@/modules/cart/components/cart-item-row";
 import { getActiveCart } from "@/modules/cart/queries";
@@ -12,6 +14,15 @@ export const metadata: Metadata = { title: "Your Cart", robots: { index: false, 
 export default async function CartPage() {
   const cart = await getActiveCart();
   const view = cart ? await toCartView(cart) : null;
+
+  if (view && view.items.length > 0) {
+    const user = await getCurrentUser();
+    await track(
+      "cart_viewed",
+      { itemCount: view.itemCount, subtotal: view.subtotal },
+      { profileId: user?.id ?? null },
+    );
+  }
 
   if (!view || view.items.length === 0) {
     return (

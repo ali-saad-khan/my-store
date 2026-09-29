@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/modules/auth/session";
+import { track } from "@/modules/analytics/track";
 import { toggleWishlistSchema } from "@/validations/wishlist";
 import { addToWishlist, removeFromWishlist } from "./mutations";
 
@@ -25,6 +26,11 @@ export async function toggleWishlistAction(
     await removeFromWishlist({ profileId: user.id, productId: parsed.data.productId });
   } else {
     await addToWishlist({ profileId: user.id, productId: parsed.data.productId });
+    await track(
+      "wishlist_added",
+      { productId: parsed.data.productId },
+      { profileId: user.id },
+    );
   }
 
   revalidatePath(`/products/${parsed.data.productSlug}`);

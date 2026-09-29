@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/modules/auth/session";
+import { track } from "@/modules/analytics/track";
 import {
   addToCart,
   CartItemNotFoundError,
@@ -41,6 +43,17 @@ export async function addToCartAction(
     if (knownCartError(error)) return { error: (error as Error).message };
     throw error;
   }
+
+  const user = await getCurrentUser();
+  await track(
+    "product_added_to_cart",
+    {
+      productId: parsed.data.productId,
+      variantId: parsed.data.variantId,
+      quantity: parsed.data.quantity,
+    },
+    { profileId: user?.id ?? null },
+  );
 
   revalidatePath("/", "layout");
   return { success: "Added to cart." };

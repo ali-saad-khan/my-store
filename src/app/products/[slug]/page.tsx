@@ -8,6 +8,7 @@ import { JsonLd } from "@/components/json-ld";
 import { DEFAULT_MARKET } from "@/config/market";
 import { formatPrice } from "@/lib/currency";
 import { absoluteUrl, buildBreadcrumbJsonLd, buildOpenGraph, buildProductJsonLd } from "@/lib/seo";
+import { track } from "@/modules/analytics/track";
 import { AddToCartForm } from "@/modules/cart/components/add-to-cart-form";
 import { getCurrentUser } from "@/modules/auth/session";
 import { getProductBySlug } from "@/modules/products/queries";
@@ -64,6 +65,13 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
+  const user = await getCurrentUser();
+  await track(
+    "product_viewed",
+    { productId: product.id, productSlug: product.slug, productName: product.name },
+    { profileId: user?.id ?? null },
+  );
+
   const primaryImage = product.images[0];
   const category = product.productCategories[0]?.category;
 
@@ -72,7 +80,6 @@ export default async function ProductPage(props: PageProps<"/products/[slug]">) 
     0,
   );
 
-  const user = await getCurrentUser();
   const [reviewSummary, reviewsResult, ownReview, inWishlist] = await Promise.all([
     getReviewSummaryForProduct(product.id),
     listApprovedReviewsForProduct(product.id, reviewsPage),

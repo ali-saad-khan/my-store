@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getAddressForProfile } from "@/modules/addresses/queries";
 import { createAddressForProfile, resolveCityGeography } from "@/modules/addresses/mutations";
 import { getCurrentUser } from "@/modules/auth/session";
+import { track } from "@/modules/analytics/track";
 import { resolveCartOwner } from "@/modules/cart/queries";
 import { clearCartSessionCookie } from "@/modules/cart/session";
 import { sendOrderConfirmationEmail } from "@/modules/notifications/emails";
@@ -102,6 +103,12 @@ export async function placeOrderAction(
     return { error: "That address couldn't be used. Double-check the city and try again." };
   }
 
+  await track(
+    "payment_started",
+    { paymentMethodCode: data.paymentMethodCode },
+    { profileId: user?.id ?? null },
+  );
+
   try {
     const { order, lines } = await placeOrder({
       cartOwner: owner,
@@ -114,6 +121,12 @@ export async function placeOrderAction(
     });
 
     if (!user) await clearCartSessionCookie();
+
+    await track(
+      "order_created",
+      { orderId: order.id, orderNumber: order.orderNumber, total: order.total },
+      { profileId: user?.id ?? null },
+    );
 
     await sendOrderConfirmationEmail({
       to: data.email,

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
 import { Pagination } from "@/components/pagination";
 import { absoluteUrl, buildBreadcrumbJsonLd, buildOpenGraph } from "@/lib/seo";
+import { track } from "@/modules/analytics/track";
+import { getCurrentUser } from "@/modules/auth/session";
 import { getCategoryBySlug } from "@/modules/categories/queries";
 import { ProductFilters } from "@/modules/products/components/product-filters";
 import { ProductGrid } from "@/modules/products/components/product-grid";
@@ -42,6 +44,15 @@ export default async function CategoryPage(props: PageProps<"/categories/[slug]"
   if (!category) notFound();
 
   const result = await listProducts({ ...search, categorySlug: slug });
+
+  if (search.q) {
+    const user = await getCurrentUser();
+    await track(
+      "product_searched",
+      { query: search.q, resultCount: result.total },
+      { profileId: user?.id ?? null },
+    );
+  }
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Home", url: absoluteUrl("/") },

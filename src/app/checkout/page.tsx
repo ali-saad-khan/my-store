@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { listAddressesForProfile } from "@/modules/addresses/queries";
 import { getCurrentProfile } from "@/modules/auth/session";
+import { track } from "@/modules/analytics/track";
 import { toCartView } from "@/modules/cart/cart-utils";
 import { getActiveCart } from "@/modules/cart/queries";
 import { CheckoutForm } from "@/modules/checkout/components/checkout-form";
@@ -19,6 +20,12 @@ export default async function CheckoutPage() {
     getCheckoutGeography(),
     getActivePaymentMethods(),
   ]);
+
+  await track(
+    "checkout_started",
+    { itemCount: view.itemCount, subtotal: view.subtotal },
+    { profileId: profile?.id ?? null },
+  );
 
   const savedAddresses = profile ? await listAddressesForProfile(profile.id) : [];
 
