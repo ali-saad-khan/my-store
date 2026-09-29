@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdmin } from "@/modules/auth/session";
 import { listAttributesWithValues } from "@/modules/attributes/queries";
 import { productBaseSchema, variantRowSchema } from "@/validations/product";
@@ -13,7 +13,7 @@ import {
   softDeleteProduct,
   updateProductAdmin,
 } from "./admin-mutations";
-import { InvalidImageFileError, uploadProductImage } from "./storage";
+import { InvalidImageFileError, uploadImage } from "@/lib/storage";
 
 export type ProductActionState = { error?: string } | undefined;
 
@@ -79,7 +79,7 @@ function firstZodError(error: { flatten: () => { fieldErrors: Record<string, str
 /** Uploads any admin-selected image files to Supabase Storage, returning their public URLs. */
 async function uploadImageFiles(formData: FormData): Promise<string[]> {
   const files = formData.getAll("imageFile").filter((f): f is File => f instanceof File && f.size > 0);
-  return Promise.all(files.map(uploadProductImage));
+  return Promise.all(files.map((file) => uploadImage(file, "products")));
 }
 
 export async function createProductAction(
@@ -120,6 +120,7 @@ export async function createProductAction(
   }
 
   revalidatePath("/admin/products");
+  updateTag("products");
   redirect(`/admin/products/${product.id}/edit`);
 }
 
@@ -170,6 +171,7 @@ export async function updateProductAction(
 
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${id}/edit`);
+  updateTag("products");
   redirect(`/admin/products/${id}/edit?saved=1`);
 }
 
@@ -180,4 +182,5 @@ export async function deleteProductAction(formData: FormData) {
 
   await softDeleteProduct(id);
   revalidatePath("/admin/products");
+  updateTag("products");
 }

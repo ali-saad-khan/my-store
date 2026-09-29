@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
 
   return (
     <Link href={`/products/${product.slug}`} className="group block">
-      <div className="bg-muted relative aspect-square overflow-hidden rounded-lg">
+      <div className="bg-muted relative aspect-square overflow-hidden rounded-lg transition-shadow group-hover:shadow-lg">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -28,6 +28,11 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
             className="object-cover transition-transform group-hover:scale-105"
           />
         ) : null}
+        {hasDiscount && (
+          <span className="bg-destructive absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-medium text-white">
+            Sale
+          </span>
+        )}
       </div>
       <div className="mt-3 space-y-1">
         {product.brand && <p className="text-muted-foreground text-xs">{product.brand}</p>}

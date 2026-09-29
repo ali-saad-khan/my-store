@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdmin } from "@/modules/auth/session";
 import { categoryInputSchema } from "@/validations/category";
 import {
@@ -47,6 +47,7 @@ export async function createCategoryAction(
   }
 
   revalidatePath("/admin/categories");
+  updateTag("categories");
   redirect("/admin/categories");
 }
 
@@ -74,6 +75,7 @@ export async function updateCategoryAction(
   }
 
   revalidatePath("/admin/categories");
+  updateTag("categories");
   redirect("/admin/categories");
 }
 
@@ -84,4 +86,5 @@ export async function deleteCategoryAction(formData: FormData) {
 
   await softDeleteCategory(id);
   revalidatePath("/admin/categories");
+  updateTag("categories");
 }

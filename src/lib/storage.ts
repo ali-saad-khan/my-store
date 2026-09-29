@@ -14,11 +14,13 @@ export class InvalidImageFileError extends Error {
 
 /**
  * Uploads one admin-provided image file to Supabase Storage and returns its public URL.
+ * `folder` namespaces the object path (e.g. "products", "banners") within the one shared
+ * bucket — the bucket's RLS policies (0008_product_images_storage.sql) check admin role
+ * generically, not by folder, so no per-folder migration is needed to add a new caller.
  * Runs as the current (already `requireAdmin()`-checked) user's session — the actual write
- * is enforced again at the database level by this bucket's RLS policies
- * (0008_product_images_storage.sql), not just by this function's caller check.
+ * is enforced again at the database level by those RLS policies, not just this caller check.
  */
-export async function uploadProductImage(file: File): Promise<string> {
+export async function uploadImage(file: File, folder: string): Promise<string> {
   if (!ALLOWED_TYPES.has(file.type)) {
     throw new InvalidImageFileError(`Unsupported image type: ${file.type || "unknown"}.`);
   }
@@ -27,7 +29,7 @@ export async function uploadProductImage(file: File): Promise<string> {
   }
 
   const extension = file.type.split("/")[1];
-  const path = `products/${crypto.randomUUID()}.${extension}`;
+  const path = `${folder}/${crypto.randomUUID()}.${extension}`;
 
   const supabase = await createClient();
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {

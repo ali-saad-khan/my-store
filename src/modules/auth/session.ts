@@ -1,18 +1,23 @@
 import "server-only";
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { profiles, roles, userRoles } from "@/db/schema";
 import { createClient } from "@/lib/supabase/server";
 
-/** Verified against the Supabase Auth server — never trust a locally-decoded JWT alone. */
-export async function getCurrentUser() {
+/**
+ * Verified against the Supabase Auth server — never trust a locally-decoded JWT alone.
+ * `cache()`-wrapped so the root layout's header, the current page, and any Server Action
+ * on the same request share one Auth API round-trip instead of each paying for their own.
+ */
+export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
 export async function getCurrentProfile() {
   const user = await getCurrentUser();

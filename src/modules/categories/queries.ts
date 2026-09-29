@@ -1,20 +1,26 @@
 import "server-only";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { unstable_cache } from "next/cache";
 import { db } from "@/db/client";
 import { categories } from "@/db/schema";
 
 const parentCategory = alias(categories, "parent_category");
 
-export async function getTopLevelCategories() {
-  return db
-    .select()
-    .from(categories)
-    .where(
-      and(isNull(categories.parentId), eq(categories.isActive, true), isNull(categories.deletedAt)),
-    )
-    .orderBy(asc(categories.sortOrder), asc(categories.name));
-}
+/** Cached — see the same note on `getFeaturedProducts`; invalidated via `revalidateTag`
+ * from the category admin actions. */
+export const getTopLevelCategories = unstable_cache(
+  async () =>
+    db
+      .select()
+      .from(categories)
+      .where(
+        and(isNull(categories.parentId), eq(categories.isActive, true), isNull(categories.deletedAt)),
+      )
+      .orderBy(asc(categories.sortOrder), asc(categories.name)),
+  ["top-level-categories"],
+  { tags: ["categories"], revalidate: 60 },
+);
 
 export async function getCategoryBySlug(slug: string) {
   const [category] = await db

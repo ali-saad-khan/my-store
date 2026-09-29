@@ -2,6 +2,7 @@ export * from "./enums";
 export * from "./reference";
 export * from "./identity";
 export * from "./addresses";
+export * from "./banners";
 export * from "./catalog";
 export * from "./inventory";
 export * from "./cart";
