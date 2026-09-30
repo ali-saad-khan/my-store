@@ -12,7 +12,7 @@ export default async function NewProductPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold">New product</h1>
       <ProductForm
         categoryOptions={categoryOptions}

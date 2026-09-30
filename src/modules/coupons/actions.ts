@@ -113,7 +113,7 @@ export async function createCouponAction(
   }
 
   revalidatePath("/admin/coupons");
-  redirect("/admin/coupons");
+  redirect("/admin/coupons?saved=1");
 }
 
 export async function updateCouponAction(
@@ -138,7 +138,7 @@ export async function updateCouponAction(
   }
 
   revalidatePath("/admin/coupons");
-  redirect("/admin/coupons");
+  redirect("/admin/coupons?saved=1");
 }
 
 export async function deleteCouponAction(formData: FormData) {

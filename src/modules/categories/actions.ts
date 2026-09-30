@@ -48,7 +48,7 @@ export async function createCategoryAction(
 
   revalidatePath("/admin/categories");
   updateTag("categories");
-  redirect("/admin/categories");
+  redirect("/admin/categories?saved=1");
 }
 
 export async function updateCategoryAction(
@@ -76,7 +76,7 @@ export async function updateCategoryAction(
 
   revalidatePath("/admin/categories");
   updateTag("categories");
-  redirect("/admin/categories");
+  redirect("/admin/categories?saved=1");
 }
 
 export async function deleteCategoryAction(formData: FormData) {

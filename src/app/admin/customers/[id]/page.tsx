@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/currency";
 import { getCustomerForAdmin } from "@/modules/customers/queries";
-import { ORDER_STATUS_LABELS } from "@/modules/orders/status";
+import { ORDER_STATUS_BADGE_VARIANT, ORDER_STATUS_LABELS } from "@/modules/orders/status";
 
 export const metadata: Metadata = { title: "Customer detail" };
 
@@ -14,7 +15,7 @@ export default async function AdminCustomerDetailPage(props: PageProps<"/admin/c
   if (!customer) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">{customer.fullName ?? customer.email}</h1>
         <p className="text-muted-foreground text-sm">
@@ -37,9 +38,11 @@ export default async function AdminCustomerDetailPage(props: PageProps<"/admin/c
               className="hover:bg-muted/50 -mx-2 flex items-center justify-between rounded-md px-2 py-1.5 text-sm"
             >
               <span>{order.orderNumber}</span>
-              <span className="text-right">
-                <span className="font-medium">{formatPrice(order.total)}</span>{" "}
-                <span className="text-muted-foreground">({ORDER_STATUS_LABELS[order.status]})</span>
+              <span className="flex items-center gap-2">
+                <span className="font-medium">{formatPrice(order.total)}</span>
+                <Badge variant={ORDER_STATUS_BADGE_VARIANT[order.status]}>
+                  {ORDER_STATUS_LABELS[order.status]}
+                </Badge>
               </span>
             </Link>
           ))}

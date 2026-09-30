@@ -53,7 +53,7 @@ export async function createBannerAction(
   revalidatePath("/admin/banners");
   revalidatePath("/");
   updateTag("banners");
-  redirect("/admin/banners");
+  redirect("/admin/banners?saved=1");
 }
 
 export async function updateBannerAction(
@@ -88,7 +88,7 @@ export async function updateBannerAction(
   revalidatePath("/admin/banners");
   revalidatePath("/");
   updateTag("banners");
-  redirect("/admin/banners");
+  redirect("/admin/banners?saved=1");
 }
 
 export async function deleteBannerAction(formData: FormData) {

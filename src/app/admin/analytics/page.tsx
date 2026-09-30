@@ -1,5 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageHeader } from "@/components/admin/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   getEventCountsLast30Days,
   getMostViewedProductsLast30Days,
@@ -26,68 +35,65 @@ export default async function AdminAnalyticsPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Analytics</h1>
-        <p className="text-muted-foreground text-sm">Last 30 days.</p>
-      </div>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <PageHeader title="Analytics" description="Last 30 days." />
 
-      <div className="border-border overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-muted-foreground text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Event</th>
-              <th className="px-3 py-2 text-right font-medium">Count</th>
-            </tr>
-          </thead>
-          <tbody className="divide-border divide-y">
+      <div className="border-border overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Event</TableHead>
+              <TableHead className="text-right">Count</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {eventCounts.map((row) => (
-              <tr key={row.eventName}>
-                <td className="px-3 py-2">{EVENT_LABELS[row.eventName] ?? row.eventName}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{row.count}</td>
-              </tr>
+              <TableRow key={row.eventName}>
+                <TableCell>{EVENT_LABELS[row.eventName] ?? row.eventName}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.count}</TableCell>
+              </TableRow>
             ))}
             {eventCounts.length === 0 && (
-              <tr>
-                <td colSpan={2} className="text-muted-foreground px-3 py-8 text-center">
+              <TableRow>
+                <TableCell colSpan={2} className="text-muted-foreground py-8 text-center">
                   No events recorded yet.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <div>
         <h2 className="mb-2 text-lg font-semibold">Most viewed products</h2>
-        <div className="border-border overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-muted-foreground text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium">Product</th>
-                <th className="px-3 py-2 text-right font-medium">Views</th>
-              </tr>
-            </thead>
-            <tbody className="divide-border divide-y">
+        <div className="border-border overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead className="text-right">Views</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {topProducts.map((row) => (
-                <tr key={row.productId}>
-                  <td className="px-3 py-2">
+                <TableRow key={row.productId}>
+                  <TableCell>
                     <Link href={`/products/${row.product.slug}`} className="underline">
                       {row.product.name}
                     </Link>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{row.count}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{row.count}</TableCell>
+                </TableRow>
               ))}
               {topProducts.length === 0 && (
-                <tr>
-                  <td colSpan={2} className="text-muted-foreground px-3 py-8 text-center">
+                <TableRow>
+                  <TableCell colSpan={2} className="text-muted-foreground py-8 text-center">
                     No product views recorded yet.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

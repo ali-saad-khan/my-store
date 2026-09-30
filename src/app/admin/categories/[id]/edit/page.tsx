@@ -14,7 +14,7 @@ export default async function EditCategoryPage(props: PageProps<"/admin/categori
   if (!category) notFound();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold">Edit category</h1>
       <CategoryForm category={category} parentOptions={parentOptions} />
     </div>

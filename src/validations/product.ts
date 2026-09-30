@@ -19,6 +19,15 @@ const optionalWeight = z.preprocess(
 
 export const PRODUCT_STATUS_VALUES = ["draft", "active", "archived"] as const;
 
+export const PRODUCT_STATUS_BADGE_VARIANT: Record<
+  (typeof PRODUCT_STATUS_VALUES)[number],
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  draft: "outline",
+  active: "default",
+  archived: "secondary",
+};
+
 export const productBaseSchema = z.object({
   name: z.string().trim().min(1, "Name is required.").max(300),
   slug: z

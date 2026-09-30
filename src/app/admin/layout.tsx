@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import { AdminNav } from "@/components/admin-nav";
+import { AppSidebar } from "@/components/admin/app-sidebar";
+import { Separator } from "@/components/ui/separator";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { requireAdmin } from "@/modules/auth/session";
 
 export const metadata: Metadata = {
@@ -10,9 +13,17 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   await requireAdmin();
 
   return (
-    <div>
-      <AdminNav />
-      {children}
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="h-4" />
+          <span className="text-muted-foreground text-sm">Admin</span>
+        </header>
+        <div className="p-4 sm:p-6">{children}</div>
+      </SidebarInset>
+      <Toaster />
+    </SidebarProvider>
   );
 }

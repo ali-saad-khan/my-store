@@ -121,7 +121,7 @@ export async function createProductAction(
 
   revalidatePath("/admin/products");
   updateTag("products");
-  redirect(`/admin/products/${product.id}/edit`);
+  redirect(`/admin/products/${product.id}/edit?saved=1`);
 }
 
 export async function updateProductAction(

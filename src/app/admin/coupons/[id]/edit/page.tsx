@@ -17,7 +17,7 @@ export default async function EditCouponPage(props: PageProps<"/admin/coupons/[i
   if (!coupon) notFound();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold">Edit coupon</h1>
       <CouponForm
         coupon={{

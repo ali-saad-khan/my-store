@@ -11,7 +11,7 @@ export default async function EditBannerPage(props: PageProps<"/admin/banners/[i
   if (!banner) notFound();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold">Edit banner</h1>
       <BannerForm banner={banner} />
     </div>

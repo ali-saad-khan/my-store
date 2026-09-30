@@ -1,4 +1,14 @@
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/admin/page-header";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Pagination } from "@/components/pagination";
 import { AdjustInventoryForm } from "@/modules/inventory/components/adjust-inventory-form";
 import { InventoryFilters } from "@/modules/inventory/components/inventory-filters";
@@ -13,65 +23,64 @@ export default async function AdminInventoryPage(props: PageProps<"/admin/invent
   const result = await listInventory(search);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Inventory</h1>
-        <p className="text-muted-foreground text-sm">
-          {result.total} tracked item{result.total === 1 ? "" : "s"}. Adjustments are recorded as
-          movements and applied transactionally.
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title="Inventory"
+        description={`${result.total} tracked item${result.total === 1 ? "" : "s"}. Adjustments are recorded as movements and applied transactionally.`}
+      />
 
       <InventoryFilters search={search} />
 
-      <div className="border-border overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-muted-foreground text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Product</th>
-              <th className="px-3 py-2 font-medium">SKU</th>
-              <th className="px-3 py-2 text-right font-medium">On hand</th>
-              <th className="px-3 py-2 text-right font-medium">Reserved</th>
-              <th className="px-3 py-2 text-right font-medium">Available</th>
-              <th className="px-3 py-2 text-right font-medium">Reorder pt</th>
-              <th className="px-3 py-2 font-medium">Adjust stock</th>
-            </tr>
-          </thead>
-          <tbody className="divide-border divide-y">
+      <div className="border-border overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead className="text-right">On hand</TableHead>
+              <TableHead className="text-right">Reserved</TableHead>
+              <TableHead className="text-right">Available</TableHead>
+              <TableHead className="text-right">Reorder pt</TableHead>
+              <TableHead>Adjust stock</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {result.items.map((item) => (
-              <tr key={item.id} className={item.isLowStock ? "bg-destructive/5" : undefined}>
-                <td className="px-3 py-2">
+              <TableRow key={item.id} className={item.isLowStock ? "bg-destructive/5" : undefined}>
+                <TableCell>
                   <div className="font-medium">{item.productName}</div>
                   {item.variantLabel && (
                     <div className="text-muted-foreground text-xs">{item.variantLabel}</div>
                   )}
                   {item.isLowStock && (
-                    <span className="text-destructive text-xs font-medium">Low stock</span>
+                    <Badge variant="destructive" className="mt-1">
+                      Low stock
+                    </Badge>
                   )}
-                </td>
-                <td className="text-muted-foreground px-3 py-2">{item.sku}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{item.quantityOnHand}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{item.quantityReserved}</td>
-                <td className="px-3 py-2 text-right font-medium tabular-nums">
+                </TableCell>
+                <TableCell className="text-muted-foreground">{item.sku}</TableCell>
+                <TableCell className="text-right tabular-nums">{item.quantityOnHand}</TableCell>
+                <TableCell className="text-right tabular-nums">{item.quantityReserved}</TableCell>
+                <TableCell className="text-right font-medium tabular-nums">
                   {item.quantityAvailable}
-                </td>
-                <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                </TableCell>
+                <TableCell className="text-muted-foreground text-right tabular-nums">
                   {item.reorderPoint}
-                </td>
-                <td className="px-3 py-2">
+                </TableCell>
+                <TableCell>
                   <AdjustInventoryForm inventoryId={item.id} />
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {result.items.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-muted-foreground px-3 py-8 text-center">
+              <TableRow>
+                <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
                   No inventory records match these filters.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <Pagination

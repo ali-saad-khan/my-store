@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageHeader } from "@/components/admin/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/pagination";
 import { ModerateReviewButtons } from "@/modules/reviews/components/moderate-review-buttons";
 import { ReviewFilters } from "@/modules/reviews/components/review-filters";
 import { listReviewsForAdmin } from "@/modules/reviews/queries";
-import { REVIEW_STATUS_LABELS } from "@/modules/reviews/status";
+import { REVIEW_STATUS_BADGE_VARIANT, REVIEW_STATUS_LABELS } from "@/modules/reviews/status";
 import { reviewListSearchSchema } from "@/validations/review";
 
 export const metadata: Metadata = { title: "Reviews" };
@@ -15,11 +17,8 @@ export default async function AdminReviewsPage(props: PageProps<"/admin/reviews"
   const result = await listReviewsForAdmin(search);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Reviews</h1>
-        <p className="text-muted-foreground text-sm">{result.total} total.</p>
-      </div>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <PageHeader title="Reviews" description={`${result.total} total.`} />
 
       <ReviewFilters status={search.status} />
 
@@ -31,9 +30,13 @@ export default async function AdminReviewsPage(props: PageProps<"/admin/reviews"
                 <Link href={`/products/${review.product.slug}`} className="font-medium underline">
                   {review.product.name}
                 </Link>
-                <p className="text-muted-foreground">
-                  {review.profile.email} · {review.rating} star{review.rating === 1 ? "" : "s"} ·{" "}
-                  {REVIEW_STATUS_LABELS[review.status]}
+                <p className="text-muted-foreground flex items-center gap-2">
+                  <span>
+                    {review.profile.email} · {review.rating} star{review.rating === 1 ? "" : "s"}
+                  </span>
+                  <Badge variant={REVIEW_STATUS_BADGE_VARIANT[review.status]}>
+                    {REVIEW_STATUS_LABELS[review.status]}
+                  </Badge>
                 </p>
               </div>
               {review.status === "pending" && <ModerateReviewButtons reviewId={review.id} />}

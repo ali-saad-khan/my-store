@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { SavedToast } from "@/components/admin/saved-toast";
 import { listAttributesWithValues } from "@/modules/attributes/queries";
 import { listCategoryOptions } from "@/modules/categories/queries";
 import { getProductForAdmin } from "@/modules/products/admin-queries";
@@ -23,7 +25,10 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
   }));
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-3xl space-y-6">
+      <Suspense fallback={null}>
+        <SavedToast message="Product saved." />
+      </Suspense>
       <h1 className="text-2xl font-semibold">Edit product</h1>
       <ProductForm
         product={{

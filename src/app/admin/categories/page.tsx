@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { PageHeader } from "@/components/admin/page-header";
+import { RowActionsMenu } from "@/components/admin/row-actions-menu";
+import { SavedToast } from "@/components/admin/saved-toast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DeleteCategoryButton } from "@/modules/categories/components/delete-category-button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { deleteCategoryAction } from "@/modules/categories/actions";
 import { listCategoriesForAdmin } from "@/modules/categories/queries";
 
 export const metadata: Metadata = { title: "Categories" };
@@ -10,30 +23,35 @@ export default async function AdminCategoriesPage() {
   const categories = await listCategoriesForAdmin();
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Categories</h1>
-        <Button
-          size="sm"
-          nativeButton={false}
-          render={<Link href="/admin/categories/new">New category</Link>}
-        />
-      </div>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <Suspense fallback={null}>
+        <SavedToast message="Category saved." />
+      </Suspense>
+      <PageHeader
+        title="Categories"
+        action={
+          <Button
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/admin/categories/new">New category</Link>}
+          />
+        }
+      />
 
-      <div className="border-border overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-muted-foreground text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Parent</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-border divide-y">
+      <div className="border-border overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Parent</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {categories.map((category) => (
-              <tr key={category.id}>
-                <td className="px-3 py-2">
+              <TableRow key={category.id}>
+                <TableCell>
                   <Link
                     href={`/admin/categories/${category.id}/edit`}
                     className="font-medium underline"
@@ -41,23 +59,36 @@ export default async function AdminCategoriesPage() {
                     {category.name}
                   </Link>
                   <div className="text-muted-foreground">{category.slug}</div>
-                </td>
-                <td className="text-muted-foreground px-3 py-2">{category.parentName ?? "—"}</td>
-                <td className="px-3 py-2">{category.isActive ? "Active" : "Inactive"}</td>
-                <td className="px-3 py-2 text-right">
-                  <DeleteCategoryButton categoryId={category.id} categoryName={category.name} />
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {category.parentName ?? "—"}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={category.isActive ? "default" : "secondary"}>
+                    {category.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <RowActionsMenu
+                    editHref={`/admin/categories/${category.id}/edit`}
+                    deleteAction={deleteCategoryAction}
+                    deleteHiddenFields={{ id: category.id }}
+                    deleteTitle={`Delete "${category.name}"?`}
+                    deleteDescription="This can be restored later, but it will disappear from the storefront immediately."
+                    deleteSuccessMessage="Category deleted."
+                  />
+                </TableCell>
+              </TableRow>
             ))}
             {categories.length === 0 && (
-              <tr>
-                <td colSpan={4} className="text-muted-foreground px-3 py-8 text-center">
+              <TableRow>
+                <TableCell colSpan={4} className="text-muted-foreground py-8 text-center">
                   No categories yet.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

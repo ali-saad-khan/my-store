@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/currency";
 import { UpdateOrderStatusForm } from "@/modules/orders/components/update-order-status-form";
 import { getOrderForAdmin } from "@/modules/orders/queries";
-import { allowedNextStatuses, ORDER_STATUS_LABELS } from "@/modules/orders/status";
+import {
+  allowedNextStatuses,
+  ORDER_STATUS_BADGE_VARIANT,
+  ORDER_STATUS_LABELS,
+} from "@/modules/orders/status";
 
 export const metadata: Metadata = { title: "Order detail" };
 
@@ -19,12 +24,17 @@ export default async function AdminOrderDetailPage(
   const payment = order.payments[0];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Order {order.orderNumber}</h1>
-        <p className="text-muted-foreground text-sm">
-          {order.profile?.email ?? order.guestEmail} · {ORDER_STATUS_LABELS[order.status]}
-        </p>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Order {order.orderNumber}</h1>
+          <p className="text-muted-foreground text-sm">
+            {order.profile?.email ?? order.guestEmail}
+          </p>
+        </div>
+        <Badge variant={ORDER_STATUS_BADGE_VARIANT[order.status]}>
+          {ORDER_STATUS_LABELS[order.status]}
+        </Badge>
       </div>
 
       <Card>
@@ -137,10 +147,12 @@ export default async function AdminOrderDetailPage(
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {order.statusHistory.map((entry) => (
-            <div key={entry.id} className="flex justify-between">
-              <span>
-                {ORDER_STATUS_LABELS[entry.toStatus]}
-                {entry.note && <span className="text-muted-foreground"> — {entry.note}</span>}
+            <div key={entry.id} className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <Badge variant={ORDER_STATUS_BADGE_VARIANT[entry.toStatus]}>
+                  {ORDER_STATUS_LABELS[entry.toStatus]}
+                </Badge>
+                {entry.note && <span className="text-muted-foreground">{entry.note}</span>}
               </span>
               <span className="text-muted-foreground shrink-0">
                 {new Date(entry.createdAt).toLocaleString()}

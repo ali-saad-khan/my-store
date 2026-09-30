@@ -15,6 +15,21 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   refunded: "Refunded",
 };
 
+export type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
+export const ORDER_STATUS_BADGE_VARIANT: Record<OrderStatus, BadgeVariant> = {
+  pending: "outline",
+  confirmed: "secondary",
+  processing: "secondary",
+  packed: "secondary",
+  shipped: "secondary",
+  out_for_delivery: "secondary",
+  delivered: "default",
+  cancelled: "destructive",
+  returned: "destructive",
+  refunded: "destructive",
+};
+
 /** The order lifecycle state machine — MasterPlan.txt section 12. */
 const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["confirmed", "cancelled"],

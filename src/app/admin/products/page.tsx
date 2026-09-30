@@ -1,13 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { z } from "zod";
+import { PageHeader } from "@/components/admin/page-header";
+import { RowActionsMenu } from "@/components/admin/row-actions-menu";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Pagination } from "@/components/pagination";
 import { formatPrice } from "@/lib/currency";
-import { DeleteProductButton } from "@/modules/products/components/delete-product-button";
+import { deleteProductAction } from "@/modules/products/admin-actions";
 import { listProductsForAdmin } from "@/modules/products/admin-queries";
+import { PRODUCT_STATUS_BADGE_VARIANT } from "@/validations/product";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -23,18 +35,18 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
   const result = await listProductsForAdmin(search);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Products</h1>
-          <p className="text-muted-foreground text-sm">{result.total} total.</p>
-        </div>
-        <Button
-          size="sm"
-          nativeButton={false}
-          render={<Link href="/admin/products/new">New product</Link>}
-        />
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageHeader
+        title="Products"
+        description={`${result.total} total.`}
+        action={
+          <Button
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/admin/products/new">New product</Link>}
+          />
+        }
+      />
 
       <form className="flex flex-wrap items-end gap-3" aria-label="Filter products">
         <div className="min-w-[10rem] flex-1 space-y-1.5">
@@ -52,49 +64,60 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
         </Button>
       </form>
 
-      <div className="border-border overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-muted-foreground text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">SKU / Variants</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 text-right font-medium">Price</th>
-              <th className="px-3 py-2 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-border divide-y">
+      <div className="border-border overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>SKU / Variants</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Price</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {result.items.map((product) => (
-              <tr key={product.id}>
-                <td className="px-3 py-2">
+              <TableRow key={product.id}>
+                <TableCell>
                   <Link
                     href={`/admin/products/${product.id}/edit`}
                     className="font-medium underline"
                   >
                     {product.name}
                   </Link>
-                </td>
-                <td className="text-muted-foreground px-3 py-2">
+                </TableCell>
+                <TableCell className="text-muted-foreground">
                   {product.hasVariants ? `${product.variantCount} variants` : (product.sku ?? "—")}
-                </td>
-                <td className="px-3 py-2">{product.status}</td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                </TableCell>
+                <TableCell>
+                  <Badge variant={PRODUCT_STATUS_BADGE_VARIANT[product.status]}>
+                    {product.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
                   {product.price ? formatPrice(product.price) : "—"}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <DeleteProductButton productId={product.id} productName={product.name} />
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell>
+                  <RowActionsMenu
+                    editHref={`/admin/products/${product.id}/edit`}
+                    deleteAction={deleteProductAction}
+                    deleteHiddenFields={{ id: product.id }}
+                    deleteTitle={`Archive "${product.name}"?`}
+                    deleteDescription="It will disappear from the storefront immediately, but can be restored later."
+                    deleteSuccessMessage="Product archived."
+                  />
+                </TableCell>
+              </TableRow>
             ))}
             {result.items.length === 0 && (
-              <tr>
-                <td colSpan={5} className="text-muted-foreground px-3 py-8 text-center">
+              <TableRow>
+                <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
                   No products match this search.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <Pagination

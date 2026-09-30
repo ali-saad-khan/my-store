@@ -7,3 +7,11 @@ export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
   approved: "Approved",
   rejected: "Rejected",
 };
+
+export type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
+export const REVIEW_STATUS_BADGE_VARIANT: Record<ReviewStatus, BadgeVariant> = {
+  pending: "outline",
+  approved: "default",
+  rejected: "destructive",
+};
