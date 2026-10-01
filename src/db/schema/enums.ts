@@ -2,6 +2,15 @@ import { pgEnum } from "drizzle-orm/pg-core";
 
 export const productStatusEnum = pgEnum("product_status", ["draft", "active", "archived"]);
 
+/** Admin-manageable homepage sections — src/db/schema/homepage.ts. */
+export const homepageSectionKeyEnum = pgEnum("homepage_section_key", [
+  "hero",
+  "categories",
+  "featured_products",
+  "promo",
+  "newsletter",
+]);
+
 export const inventoryMovementTypeEnum = pgEnum("inventory_movement_type", [
   "purchase",
   "sale",

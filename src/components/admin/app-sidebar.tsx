@@ -6,6 +6,7 @@ import {
   FolderTree,
   Image as ImageIcon,
   LayoutDashboard,
+  LayoutPanelTop,
   Package,
   ShoppingCart,
   Star,
@@ -41,7 +42,10 @@ const NAV_GROUPS = [
   },
   {
     label: "Content",
-    items: [{ href: "/admin/banners", label: "Banners", icon: ImageIcon }],
+    items: [
+      { href: "/admin/homepage", label: "Homepage", icon: LayoutPanelTop },
+      { href: "/admin/banners", label: "Banners", icon: ImageIcon },
+    ],
   },
   {
     label: "Sales",

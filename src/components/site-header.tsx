@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { ShoppingCart, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, getUserRoles } from "@/modules/auth/session";
 import { SignOutButton } from "@/modules/auth/components/sign-out-button";
 import { getCartItemCount } from "@/modules/cart/queries";
 
-/** Minimal nav. Full site UI/branding is Phase 21. */
 export async function SiteHeader() {
   const user = await getCurrentUser();
   const [userRoleNames, cartItemCount] = await Promise.all([
@@ -14,57 +14,79 @@ export async function SiteHeader() {
   const isAdmin = userRoleNames.includes("admin");
 
   return (
-    <header className="flex h-16 items-center justify-between border-b px-4">
-      <div className="flex items-center gap-6">
-        <Link href="/" className="font-semibold">
-          my-store
-        </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/products" className="text-muted-foreground hover:text-foreground">
-            Shop
-          </Link>
-          <Link href="/categories" className="text-muted-foreground hover:text-foreground">
-            Categories
-          </Link>
-        </nav>
+    <div className="sticky top-0 z-20">
+      <div className="bg-foreground text-background px-4 py-2 text-center text-xs font-semibold tracking-wide uppercase">
+        Free delivery across Pakistan on orders over Rs 2,500
       </div>
-      <nav className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          nativeButton={false}
-          render={<Link href="/cart">Cart{cartItemCount > 0 ? ` (${cartItemCount})` : ""}</Link>}
-        />
-        {user ? (
-          <>
-            {isAdmin && (
+      <header className="bg-background flex h-[72px] items-center justify-between border-b px-6 sm:px-12">
+        <div className="flex items-center gap-10">
+          <Link href="/" className="text-xl font-black tracking-tight">
+            my-store
+          </Link>
+          <nav className="hidden items-center gap-7 text-sm font-semibold sm:flex">
+            <Link href="/products" className="hover:text-brand-accent">
+              Shop
+            </Link>
+            <Link href="/categories" className="hover:text-brand-accent">
+              Categories
+            </Link>
+          </nav>
+        </div>
+        <nav className="flex items-center gap-1.5">
+          {user ? (
+            <>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  nativeButton={false}
+                  render={<Link href="/admin">Admin</Link>}
+                />
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                nativeButton={false}
+                render={
+                  <Link href="/account" aria-label="My account">
+                    <UserRound />
+                  </Link>
+                }
+              />
+              <SignOutButton />
+            </>
+          ) : (
+            <>
               <Button
                 variant="ghost"
                 size="sm"
                 nativeButton={false}
-                render={<Link href="/admin">Admin</Link>}
+                render={<Link href="/login">Sign in</Link>}
               />
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              nativeButton={false}
-              render={<Link href="/account">My account</Link>}
-            />
-            <SignOutButton />
-          </>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              nativeButton={false}
-              render={<Link href="/login">Sign in</Link>}
-            />
-            <Button size="sm" nativeButton={false} render={<Link href="/register">Sign up</Link>} />
-          </>
-        )}
-      </nav>
-    </header>
+              <Button size="sm" nativeButton={false} render={<Link href="/register">Sign up</Link>} />
+            </>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            nativeButton={false}
+            className="relative"
+            render={
+              <Link
+                href="/cart"
+                aria-label={`Cart, ${cartItemCount} item${cartItemCount === 1 ? "" : "s"}`}
+              >
+                <ShoppingCart />
+                {cartItemCount > 0 && (
+                  <span className="bg-brand-accent text-brand-accent-foreground absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] font-bold">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
+            }
+          />
+        </nav>
+      </header>
+    </div>
   );
 }

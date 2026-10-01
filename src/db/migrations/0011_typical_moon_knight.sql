@@ -1,0 +1,2 @@
+ALTER TABLE "cities" ADD CONSTRAINT "cities_country_id_state_id_name_unique" UNIQUE("country_id","state_id","name");--> statement-breakpoint
+ALTER TABLE "states" ADD CONSTRAINT "states_country_id_name_unique" UNIQUE("country_id","name");

@@ -1,4 +1,13 @@
-import { boolean, integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 /**
  * Reference/configuration data. Business logic must read market rules (currency,
@@ -27,27 +36,43 @@ export const countries = pgTable("countries", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const states = pgTable("states", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  countryId: uuid("country_id")
-    .notNull()
-    .references(() => countries.id, { onDelete: "cascade" }),
-  code: text("code"),
-  name: text("name").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const states = pgTable(
+  "states",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    countryId: uuid("country_id")
+      .notNull()
+      .references(() => countries.id, { onDelete: "cascade" }),
+    code: text("code"),
+    name: text("name").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Lets the seed script upsert (onConflictDoNothing) instead of delete-then-reinsert —
+  // real addresses/cities reference these rows once live, so resetting them is unsafe.
+  (table) => [unique("states_country_id_name_unique").on(table.countryId, table.name)],
+);
 
-export const cities = pgTable("cities", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  countryId: uuid("country_id")
-    .notNull()
-    .references(() => countries.id, { onDelete: "cascade" }),
-  stateId: uuid("state_id").references(() => states.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const cities = pgTable(
+  "cities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    countryId: uuid("country_id")
+      .notNull()
+      .references(() => countries.id, { onDelete: "cascade" }),
+    stateId: uuid("state_id").references(() => states.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("cities_country_id_state_id_name_unique").on(
+      table.countryId,
+      table.stateId,
+      table.name,
+    ),
+  ],
+);
 
 /**
  * Minimal country/state tax rule. Extended with product/category-level rules

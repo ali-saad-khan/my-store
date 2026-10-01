@@ -18,27 +18,31 @@ export function ProductCard({ product }: { product: ProductCardItem }) {
 
   return (
     <Link href={`/products/${product.slug}`} className="group block">
-      <div className="bg-muted relative aspect-square overflow-hidden rounded-lg transition-shadow group-hover:shadow-lg">
+      <div className="bg-muted relative aspect-square overflow-hidden rounded-xl transition-shadow group-hover:shadow-lg">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-            className="object-cover transition-transform group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : null}
         {hasDiscount && (
-          <span className="bg-destructive absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-medium text-white">
+          <span className="bg-brand-accent text-brand-accent-foreground absolute top-3 left-3 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide uppercase">
             Sale
           </span>
         )}
       </div>
-      <div className="mt-3 space-y-1">
-        {product.brand && <p className="text-muted-foreground text-xs">{product.brand}</p>}
-        <h3 className="text-foreground text-sm font-medium">{product.name}</h3>
+      <div className="mt-3.5 space-y-1">
+        {product.brand && (
+          <p className="text-muted-foreground text-xs font-semibold">{product.brand}</p>
+        )}
+        <h3 className="text-foreground text-[15px] font-semibold group-hover:underline">
+          {product.name}
+        </h3>
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold">{formatPrice(product.displayPrice)}</span>
+          <span className="text-[15px] font-bold">{formatPrice(product.displayPrice)}</span>
           {hasDiscount && (
             <span className="text-muted-foreground text-xs line-through">
               {formatPrice(product.compareAtPrice!)}

@@ -65,16 +65,20 @@ export function HeroBannerSlider({ slides }: { slides: BannerSlide[] }) {
             className="object-cover"
           />
           {(slide.title || slide.subtitle || slide.ctaLabel) && (
-            <div className="absolute inset-0 flex items-center bg-black/30">
-              <div className="max-w-md space-y-3 px-6 text-white sm:px-12">
+            <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/70 via-black/20 to-transparent sm:items-center">
+              <div className="max-w-lg space-y-4 px-6 pb-10 text-white sm:px-14 sm:pb-0">
                 {slide.title && (
-                  <h2 className="text-2xl font-semibold sm:text-4xl">{slide.title}</h2>
+                  <h2 className="text-3xl leading-[0.95] font-black tracking-tight sm:text-5xl">
+                    {slide.title}
+                  </h2>
                 )}
-                {slide.subtitle && <p className="text-sm sm:text-base">{slide.subtitle}</p>}
+                {slide.subtitle && (
+                  <p className="max-w-sm text-sm text-white/85 sm:text-base">{slide.subtitle}</p>
+                )}
                 {slide.ctaLabel && slide.ctaLink && (
                   <Link
                     href={slide.ctaLink}
-                    className="bg-background text-foreground inline-block rounded-lg px-5 py-2 text-sm font-medium"
+                    className="bg-background text-foreground inline-block rounded-full px-7 py-3 text-sm font-bold"
                   >
                     {slide.ctaLabel}
                   </Link>

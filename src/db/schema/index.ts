@@ -4,6 +4,7 @@ export * from "./identity";
 export * from "./addresses";
 export * from "./banners";
 export * from "./catalog";
+export * from "./homepage";
 export * from "./inventory";
 export * from "./cart";
 export * from "./payment-methods";

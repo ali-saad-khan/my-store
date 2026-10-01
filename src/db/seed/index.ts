@@ -5,8 +5,12 @@
  * Supabase Auth user (profiles/addresses/carts/orders/reviews/wishlists need a
  * real `auth.users` row, which doesn't exist until Phase 2 wires up authentication).
  * Safe to re-run: it deletes the rows it owns before re-inserting them, except
- * `roles`, which is upserted so it never disturbs real user_roles grants.
+ * `roles`, `coupons`, `payment_methods`, `currencies`, `countries`, `states`, `cities`,
+ * and `homepage_sections` — all upserted (onConflictDoNothing) instead, since real data
+ * (orders, addresses, carts, user_roles) references them once anyone has used the app, and
+ * deleting-then-reinserting would either fail on the FK or cascade-delete history.
  */
+import { eq } from "drizzle-orm";
 import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
@@ -35,6 +39,7 @@ async function main() {
     inventory,
     coupons,
     settings,
+    homepageSections,
   } = schema;
 
   console.log("Resetting previously seeded rows...");
@@ -50,55 +55,68 @@ async function main() {
   await db.delete(shippingRates);
   await db.delete(shippingZoneLocations);
   await db.delete(shippingZones);
-  await db.delete(paymentMethods);
-  // roles and coupons are intentionally NOT reset here: once real orders/carts
-  // reference a coupon (coupon_usages, orders.coupon_id, carts.coupon_id) or
-  // real user_roles reference a role, deleting-then-reinserting would either
-  // cascade-delete usage history or silently null out live references, since
-  // both tables' ids regenerate on every insert (see the idempotent upserts
-  // below).
+  // roles, coupons, and payment_methods are intentionally NOT reset here: once real
+  // orders/carts reference a coupon (coupon_usages, orders.coupon_id, carts.coupon_id), a
+  // real user_roles references a role, or a real order references a payment method
+  // (orders.payment_method_id), deleting-then-reinserting would either cascade-delete
+  // usage history or fail outright on the FK, since all three tables' ids regenerate on
+  // every insert (see the idempotent upserts below). payment_methods hit this for real the
+  // first time this seed ran after Phase 6+ orders existed — same bug class as roles
+  // (Phase 2) and coupons (Phase 9), now fixed the same way. currencies/countries/states/
+  // cities are excluded for the identical reason: real addresses reference them once
+  // anyone has checked out — this one crashed an actual seed run mid-way (after products/
+  // categories/variants were already wiped by the earlier deletes above, but before they
+  // were re-inserted below), which is exactly the failure mode this whole comment warns
+  // about. states/cities gained real unique constraints (src/db/schema/reference.ts) so
+  // they can use the same onConflictDoNothing pattern as everything else here.
   await db.delete(taxRates);
-  await db.delete(cities);
-  await db.delete(states);
-  await db.delete(countries);
-  await db.delete(currencies);
   await db.delete(settings);
 
-  console.log("Seeding currencies & countries...");
-  await db.insert(currencies).values([
-    { code: "PKR", name: "Pakistani Rupee", symbol: "Rs", decimalDigits: 0, isActive: true },
-    { code: "USD", name: "US Dollar", symbol: "$", decimalDigits: 2, isActive: false },
-    { code: "AED", name: "UAE Dirham", symbol: "AED", decimalDigits: 2, isActive: false },
-    { code: "GBP", name: "British Pound", symbol: "£", decimalDigits: 2, isActive: false },
-  ]);
+  console.log("Seeding currencies & countries (idempotent)...");
+  await db
+    .insert(currencies)
+    .values([
+      { code: "PKR", name: "Pakistani Rupee", symbol: "Rs", decimalDigits: 0, isActive: true },
+      { code: "USD", name: "US Dollar", symbol: "$", decimalDigits: 2, isActive: false },
+      { code: "AED", name: "UAE Dirham", symbol: "AED", decimalDigits: 2, isActive: false },
+      { code: "GBP", name: "British Pound", symbol: "£", decimalDigits: 2, isActive: false },
+    ])
+    .onConflictDoNothing({ target: currencies.code });
 
-  const [pakistan] = await db
+  await db
     .insert(countries)
-    .values([{ code: "PK", name: "Pakistan", currencyCode: "PKR", phoneCode: "+92" }])
-    .returning();
-  await db.insert(countries).values([
-    { code: "US", name: "United States", currencyCode: "USD", phoneCode: "+1", isActive: false },
-    {
-      code: "AE",
-      name: "United Arab Emirates",
-      currencyCode: "AED",
-      phoneCode: "+971",
-      isActive: false,
-    },
-    { code: "GB", name: "United Kingdom", currencyCode: "GBP", phoneCode: "+44", isActive: false },
-  ]);
+    .values([
+      { code: "PK", name: "Pakistan", currencyCode: "PKR", phoneCode: "+92" },
+      { code: "US", name: "United States", currencyCode: "USD", phoneCode: "+1", isActive: false },
+      {
+        code: "AE",
+        name: "United Arab Emirates",
+        currencyCode: "AED",
+        phoneCode: "+971",
+        isActive: false,
+      },
+      { code: "GB", name: "United Kingdom", currencyCode: "GBP", phoneCode: "+44", isActive: false },
+    ])
+    .onConflictDoNothing({ target: countries.code });
+  // Always re-fetched (never trusted from .returning(), which is empty for a row
+  // onConflictDoNothing skipped) so downstream inserts get the real id either way.
+  const [pakistan] = await db.select().from(countries).where(eq(countries.code, "PK"));
 
-  console.log("Seeding states & cities...");
-  const [sindh, punjab, ict] = await db
+  console.log("Seeding states & cities (idempotent)...");
+  await db
     .insert(states)
     .values([
       { countryId: pakistan.id, code: "SD", name: "Sindh" },
       { countryId: pakistan.id, code: "PB", name: "Punjab" },
       { countryId: pakistan.id, code: "IS", name: "Islamabad Capital Territory" },
     ])
-    .returning();
+    .onConflictDoNothing({ target: [states.countryId, states.name] });
+  const pakistaniStates = await db.select().from(states).where(eq(states.countryId, pakistan.id));
+  const sindh = pakistaniStates.find((s) => s.name === "Sindh")!;
+  const punjab = pakistaniStates.find((s) => s.name === "Punjab")!;
+  const ict = pakistaniStates.find((s) => s.name === "Islamabad Capital Territory")!;
 
-  const [karachi, lahore, islamabad, rawalpindi, faisalabad] = await db
+  await db
     .insert(cities)
     .values([
       { countryId: pakistan.id, stateId: sindh.id, name: "Karachi" },
@@ -107,7 +125,19 @@ async function main() {
       { countryId: pakistan.id, stateId: punjab.id, name: "Rawalpindi" },
       { countryId: pakistan.id, stateId: punjab.id, name: "Faisalabad" },
     ])
-    .returning();
+    .onConflictDoNothing({ target: [cities.countryId, cities.stateId, cities.name] });
+  const pakistaniCities = await db.select().from(cities).where(eq(cities.countryId, pakistan.id));
+  const [karachi, lahore, islamabad, rawalpindi, faisalabad] = [
+    "Karachi",
+    "Lahore",
+    "Islamabad",
+    "Rawalpindi",
+    "Faisalabad",
+  ].map((name) => {
+    const city = pakistaniCities.find((c) => c.name === name);
+    if (!city) throw new Error(`Expected city "${name}" not found after seeding.`);
+    return city;
+  });
 
   console.log("Seeding tax rates...");
   await db
@@ -129,17 +159,20 @@ async function main() {
     ])
     .onConflictDoNothing({ target: roles.name });
 
-  console.log("Seeding payment methods...");
-  await db.insert(paymentMethods).values([
-    { code: "cod", name: "Cash on Delivery", isActive: true, sortOrder: 0 },
-    {
-      code: "manual_gateway",
-      name: "Online Payment (coming soon)",
-      isActive: false,
-      sortOrder: 1,
-      config: { note: "Placeholder for a future local/regional payment gateway integration." },
-    },
-  ]);
+  console.log("Seeding payment methods (idempotent — never touches existing orders' FK)...");
+  await db
+    .insert(paymentMethods)
+    .values([
+      { code: "cod", name: "Cash on Delivery", isActive: true, sortOrder: 0 },
+      {
+        code: "manual_gateway",
+        name: "Online Payment (coming soon)",
+        isActive: false,
+        sortOrder: 1,
+        config: { note: "Placeholder for a future local/regional payment gateway integration." },
+      },
+    ])
+    .onConflictDoNothing({ target: paymentMethods.code });
 
   console.log("Seeding shipping zones & rates...");
   const [majorCities, restOfPakistan] = await db
@@ -386,6 +419,38 @@ async function main() {
     { key: "support_email", value: "support@example.com" },
     { key: "default_low_stock_threshold", value: 5 },
   ]);
+
+  // Not reset above, same reasoning as roles/coupons: admins edit these rows directly
+  // (visibility + content) via /admin/homepage, so re-seeding must never clobber their edits.
+  console.log("Seeding homepage sections (idempotent — never overwrites admin edits)...");
+  await db
+    .insert(homepageSections)
+    .values([
+      { key: "hero", isVisible: true, content: {} },
+      { key: "categories", isVisible: true, content: { heading: "Shop by Category" } },
+      { key: "featured_products", isVisible: true, content: { heading: "Featured" } },
+      {
+        key: "promo",
+        isVisible: true,
+        content: {
+          eyebrow: "Limited time",
+          heading: "Up to 30% off select electronics",
+          subcopy: "This week only, while stocks last.",
+          ctaLabel: "Shop the Sale",
+          ctaLink: "/products",
+          imageUrl: null,
+        },
+      },
+      {
+        key: "newsletter",
+        isVisible: true,
+        content: {
+          heading: "Get first access",
+          subcopy: "New arrivals, restocks and member-only pricing — straight to your inbox.",
+        },
+      },
+    ])
+    .onConflictDoNothing({ target: homepageSections.key });
 
   console.log("Seed complete.");
   process.exit(0);
