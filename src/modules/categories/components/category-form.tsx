@@ -41,6 +41,32 @@ export function CategoryForm({
       {category?.id && <input type="hidden" name="id" value={category.id} />}
       <FormMessage error={state?.error} />
 
+      {category?.imageUrl && (
+        <div className="space-y-1.5">
+          <Label>Current image</Label>
+          {/* eslint-disable-next-line @next/next/no-img-element -- admin preview only, not the optimized storefront render */}
+          <img
+            src={category.imageUrl}
+            alt=""
+            className="h-32 w-full max-w-sm rounded-lg object-cover"
+          />
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <Label htmlFor="imageFile">{category?.id ? "Replace image" : "Image (optional)"}</Label>
+        <input
+          id="imageFile"
+          name="imageFile"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          className="border-border bg-background w-full rounded-lg border px-2.5 py-1.5 text-sm"
+        />
+        <p className="text-muted-foreground text-xs">
+          JPEG, PNG, WebP, or AVIF, up to 5MB. Uploaded to Supabase Storage.
+        </p>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="name">Name</Label>
@@ -76,8 +102,10 @@ export function CategoryForm({
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="imageUrl">Image URL (optional)</Label>
-          <Input id="imageUrl" name="imageUrl" type="url" defaultValue={category?.imageUrl ?? ""} />
+          <Label htmlFor="imageUrl">
+            Or image URL{category?.id ? " (leave blank to keep current)" : " (optional)"}
+          </Label>
+          <Input id="imageUrl" name="imageUrl" type="url" placeholder="https://..." />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="description">Description (optional)</Label>

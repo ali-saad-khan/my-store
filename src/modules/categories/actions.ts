@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
+import { InvalidImageFileError, uploadImage } from "@/lib/storage";
 import { requireAdmin } from "@/modules/auth/session";
 import { categoryInputSchema } from "@/validations/category";
 import {
@@ -28,6 +29,12 @@ function parseCategoryForm(formData: FormData) {
   });
 }
 
+async function uploadedImageUrl(formData: FormData): Promise<string | undefined> {
+  const file = formData.get("imageFile");
+  if (!(file instanceof File) || file.size === 0) return undefined;
+  return uploadImage(file, "categories");
+}
+
 export async function createCategoryAction(
   _prevState: CategoryActionState,
   formData: FormData,
@@ -39,14 +46,24 @@ export async function createCategoryAction(
     return { error: firstError ?? "Invalid input." };
   }
 
+  let uploadedUrl: string | undefined;
   try {
-    await createCategory(parsed.data);
+    uploadedUrl = await uploadedImageUrl(formData);
+  } catch (error) {
+    if (error instanceof InvalidImageFileError) return { error: error.message };
+    throw error;
+  }
+
+  try {
+    await createCategory({ ...parsed.data, imageUrl: uploadedUrl ?? parsed.data.imageUrl });
   } catch (error) {
     if (error instanceof DuplicateSlugError) return { error: error.message };
     throw error;
   }
 
   revalidatePath("/admin/categories");
+  revalidatePath("/");
+  revalidatePath("/categories");
   updateTag("categories");
   redirect("/admin/categories?saved=1");
 }
@@ -65,8 +82,16 @@ export async function updateCategoryAction(
     return { error: firstError ?? "Invalid input." };
   }
 
+  let uploadedUrl: string | undefined;
   try {
-    await updateCategory(id, parsed.data);
+    uploadedUrl = await uploadedImageUrl(formData);
+  } catch (error) {
+    if (error instanceof InvalidImageFileError) return { error: error.message };
+    throw error;
+  }
+
+  try {
+    await updateCategory(id, { ...parsed.data, imageUrl: uploadedUrl ?? parsed.data.imageUrl });
   } catch (error) {
     if (error instanceof DuplicateSlugError || error instanceof SelfParentError) {
       return { error: error.message };
@@ -75,6 +100,8 @@ export async function updateCategoryAction(
   }
 
   revalidatePath("/admin/categories");
+  revalidatePath("/");
+  revalidatePath("/categories");
   updateTag("categories");
   redirect("/admin/categories?saved=1");
 }
@@ -86,5 +113,7 @@ export async function deleteCategoryAction(formData: FormData) {
 
   await softDeleteCategory(id);
   revalidatePath("/admin/categories");
+  revalidatePath("/");
+  revalidatePath("/categories");
   updateTag("categories");
 }
